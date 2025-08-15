@@ -321,6 +321,7 @@
                         <button class="btn btn-secondary" id="resetPuzzle">↺ Reset</button>
                         <button class="btn btn-secondary" id="skipPuzzle">Skip →</button>
                         <button class="btn btn-secondary" id="showHint">💡 Hint</button>
+                        <button class="btn btn-secondary" id="randomizePuzzles">🎲 Randomize</button>
                         <button class="btn btn-primary" id="downloadMistakes">📥 Download Mistakes</button>
                     </div>
 
@@ -343,6 +344,7 @@
         class ChessPuzzleTrainer {
             constructor() {
                 this.puzzles = [];
+                this.originalPuzzles = []; // Keep original order
                 this.currentPuzzleIndex = 0;
                 this.mistakes = [];
                 this.correctCount = 0;
@@ -351,6 +353,7 @@
                 this.currentSolution = null;
                 this.initialPosition = null;
                 this.showingHint = false;
+                this.isRandomized = false;
                 
                 this.initializeEventListeners();
                 this.loadState();
@@ -361,6 +364,7 @@
                 document.getElementById('resetPuzzle').addEventListener('click', () => this.resetCurrentPuzzle());
                 document.getElementById('skipPuzzle').addEventListener('click', () => this.nextPuzzle());
                 document.getElementById('showHint').addEventListener('click', () => this.showHint());
+                document.getElementById('randomizePuzzles').addEventListener('click', () => this.toggleRandomize());
                 document.getElementById('downloadMistakes').addEventListener('click', () => this.downloadMistakes());
             }
 
@@ -391,9 +395,11 @@
                 }
 
                 if (this.puzzles.length > 0) {
+                    this.originalPuzzles = [...this.puzzles]; // Store original order
                     this.currentPuzzleIndex = 0;
                     this.correctCount = 0;
                     this.mistakes = [];
+                    this.isRandomized = false;
                     this.startPuzzles();
                 } else {
                     alert('No valid puzzles found in the PGN file');
@@ -571,6 +577,38 @@
                        move1.promotion === move2.promotion;
             }
 
+            toggleRandomize() {
+                if (this.puzzles.length === 0) return;
+                
+                if (this.isRandomized) {
+                    // Restore original order
+                    this.puzzles = [...this.originalPuzzles];
+                    this.isRandomized = false;
+                    this.showFeedback(true, '📋 Restored original order');
+                    document.getElementById('randomizePuzzles').textContent = '🎲 Randomize';
+                } else {
+                    // Randomize puzzles
+                    this.shuffleArray(this.puzzles);
+                    this.isRandomized = true;
+                    this.showFeedback(true, '🎲 Puzzles randomized!');
+                    document.getElementById('randomizePuzzles').textContent = '📋 Original Order';
+                }
+                
+                // Reset to first puzzle in new order
+                this.currentPuzzleIndex = 0;
+                this.loadPuzzle(0);
+                
+                setTimeout(() => this.clearFeedback(), 2000);
+            }
+
+            shuffleArray(array) {
+                // Fisher-Yates shuffle algorithm
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
             showHint() {
                 if (!this.currentSolution) return;
                 
@@ -623,10 +661,22 @@
             }
 
             updatePuzzleInfo(puzzle) {
-                document.getElementById('currentPuzzle').textContent = this.currentPuzzleIndex + 1;
+                // Use the actual position in the original array for display if not randomized
+                let displayIndex = this.currentPuzzleIndex + 1;
+                if (this.isRandomized) {
+                    // Find the original index of this puzzle
+                    const origIndex = this.originalPuzzles.findIndex(p => 
+                        p.fen === puzzle.fen && p.solution === puzzle.solution
+                    );
+                    if (origIndex !== -1) {
+                        displayIndex = origIndex + 1;
+                    }
+                }
+                
+                document.getElementById('currentPuzzle').textContent = displayIndex;
                 document.getElementById('totalPuzzles').textContent = this.puzzles.length;
                 document.getElementById('toMove').textContent = this.game.turn() === 'w' ? 'White' : 'Black';
-                document.getElementById('eventName').textContent = puzzle.headers.Event || `Puzzle ${this.currentPuzzleIndex + 1}`;
+                document.getElementById('eventName').textContent = puzzle.headers.Event || `Puzzle ${displayIndex}`;
             }
 
             updateStats() {

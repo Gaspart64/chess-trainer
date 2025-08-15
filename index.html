@@ -239,24 +239,30 @@
             border: 2px solid #f56565;
         }
 
-        .move-history {
+        .solution-display {
             background: #f7f9fc;
             padding: 15px;
             border-radius: 10px;
             margin-top: 20px;
-            max-height: 200px;
-            overflow-y: auto;
         }
 
-        .move-history h4 {
+        .solution-display h4 {
             color: #4a5568;
             margin-bottom: 10px;
         }
 
-        .move-list {
+        .solution-text {
             font-family: 'Courier New', monospace;
             color: #2d3748;
-            line-height: 1.6;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .hint-text {
+            color: #718096;
+            font-size: 0.9em;
+            margin-top: 10px;
+            font-style: italic;
         }
 
         @media (max-width: 768px) {
@@ -314,14 +320,16 @@
                     <div class="controls">
                         <button class="btn btn-secondary" id="resetPuzzle">↺ Reset</button>
                         <button class="btn btn-secondary" id="skipPuzzle">Skip →</button>
+                        <button class="btn btn-secondary" id="showHint">💡 Hint</button>
                         <button class="btn btn-primary" id="downloadMistakes">📥 Download Mistakes</button>
                     </div>
 
                     <div id="feedback"></div>
 
-                    <div class="move-history">
-                        <h4>Solution Moves</h4>
-                        <div class="move-list" id="moveList">Waiting for moves...</div>
+                    <div class="solution-display">
+                        <h4>Find the Best Move!</h4>
+                        <div class="solution-text" id="solutionText">?</div>
+                        <div class="hint-text" id="hintText"></div>
                     </div>
                 </div>
             </div>
@@ -340,9 +348,9 @@
                 this.correctCount = 0;
                 this.board = null;
                 this.game = null;
-                this.currentSolution = [];
-                this.moveIndex = 0;
+                this.currentSolution = null;
                 this.initialPosition = null;
+                this.showingHint = false;
                 
                 this.initializeEventListeners();
                 this.loadState();
@@ -352,6 +360,7 @@
                 document.getElementById('pgnFile').addEventListener('change', (e) => this.handleFileUpload(e));
                 document.getElementById('resetPuzzle').addEventListener('click', () => this.resetCurrentPuzzle());
                 document.getElementById('skipPuzzle').addEventListener('click', () => this.nextPuzzle());
+                document.getElementById('showHint').addEventListener('click', () => this.showHint());
                 document.getElementById('downloadMistakes').addEventListener('click', () => this.downloadMistakes());
             }
 
@@ -369,7 +378,8 @@
 
             parsePGN(pgnContent) {
                 this.puzzles = [];
-                const games = pgnContent.split(/\n\n(?=\[)/);
+                // Split by double newlines or by [Event pattern
+                const games = pgnContent.split(/\r?\n\r?\n(?=\[)|(?=\[Event)/);
                 
                 for (const gameText of games) {
                     if (!gameText.trim()) continue;
@@ -382,6 +392,8 @@
 
                 if (this.puzzles.length > 0) {
                     this.currentPuzzleIndex = 0;
+                    this.correctCount = 0;
+                    this.mistakes = [];
                     this.startPuzzles();
                 } else {
                     alert('No valid puzzles found in the PGN file');
@@ -397,27 +409,30 @@
                     headers[match[1]] = match[2];
                 }
 
-                const moveText = gameText.replace(/\[.*?\]\n?/g, '').trim();
-                const moves = this.extractMoves(moveText);
+                // Extract moves after headers
+                const moveText = gameText.replace(/\[.*?\]\s*/g, '').trim();
+                
+                // Parse the solution move(s)
+                // Remove move numbers, results, and clean up
+                const cleanMoves = moveText
+                    .replace(/\{[^}]*\}/g, '') // Remove comments
+                    .replace(/\([^)]*\)/g, '') // Remove variations
+                    .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
+                    .replace(/\d+\.+/g, '') // Remove move numbers
+                    .trim();
 
-                if (moves.length === 0) return null;
+                // Extract the first move as the solution
+                const moveMatch = cleanMoves.match(/\S+/);
+                const solutionMove = moveMatch ? moveMatch[0] : null;
+
+                if (!solutionMove) return null;
 
                 return {
                     headers: headers,
                     fen: headers.FEN || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-                    moves: moves,
+                    solution: solutionMove,
                     pgn: gameText
                 };
-            }
-
-            extractMoves(moveText) {
-                // Remove comments and variations
-                moveText = moveText.replace(/\{[^}]*\}/g, '');
-                moveText = moveText.replace(/\([^)]*\)/g, '');
-                moveText = moveText.replace(/\d+\./g, '');
-                
-                const moves = moveText.match(/[a-h][1-8][a-h][1-8][qrbn]?|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|O-O-O|O-O|[a-h]x[a-h][1-8]/gi);
-                return moves || [];
             }
 
             startPuzzles() {
@@ -453,45 +468,19 @@
                 const puzzle = this.puzzles[index];
                 this.game = new Chess(puzzle.fen);
                 this.board.position(this.game.fen());
-                this.currentSolution = puzzle.moves;
-                this.moveIndex = 0;
+                
+                // Determine board orientation based on who moves
+                const orientation = this.game.turn() === 'w' ? 'white' : 'black';
+                this.board.orientation(orientation);
+                
+                this.currentSolution = puzzle.solution;
                 this.initialPosition = puzzle.fen;
-
-                // Make the first move (opponent's move)
-                if (this.currentSolution.length > 0) {
-                    setTimeout(() => {
-                        this.makeMove(this.currentSolution[0]);
-                        this.moveIndex = 1;
-                        this.updateMoveList();
-                    }, 500);
-                }
+                this.showingHint = false;
 
                 this.updatePuzzleInfo(puzzle);
                 this.clearFeedback();
-            }
-
-            makeMove(move) {
-                try {
-                    // Try the move as-is first
-                    let result = this.game.move(move);
-                    
-                    // If that fails, try interpreting it as algebraic notation
-                    if (!result) {
-                        result = this.game.move({
-                            from: move.slice(0, 2),
-                            to: move.slice(2, 4),
-                            promotion: move[4] || 'q'
-                        });
-                    }
-                    
-                    if (result) {
-                        this.board.position(this.game.fen());
-                        return true;
-                    }
-                } catch (e) {
-                    console.error('Move error:', e);
-                }
-                return false;
+                document.getElementById('solutionText').textContent = '?';
+                document.getElementById('hintText').textContent = '';
             }
 
             onDragStart(source, piece, position, orientation) {
@@ -508,48 +497,102 @@
             }
 
             onDrop(source, target) {
+                // Try the move
                 const move = this.game.move({
                     from: source,
                     to: target,
-                    promotion: 'q'
+                    promotion: 'q' // Always promote to queen for simplicity
                 });
 
                 if (move === null) return 'snapback';
 
-                // Check if this is the correct move
-                const expectedMove = this.currentSolution[this.moveIndex];
-                const moveString = source + target;
-                
-                if (this.isCorrectMove(moveString, expectedMove)) {
-                    this.moveIndex++;
-                    
-                    if (this.moveIndex >= this.currentSolution.length) {
-                        // Puzzle solved!
-                        this.showFeedback(true, 'Excellent! Puzzle solved! 🎉');
-                        this.correctCount++;
-                        this.updateStats();
-                        setTimeout(() => this.nextPuzzle(), 2000);
-                    } else {
-                        // Make the opponent's response
-                        setTimeout(() => {
-                            this.makeMove(this.currentSolution[this.moveIndex]);
-                            this.moveIndex++;
-                            this.updateMoveList();
-                        }, 500);
-                    }
+                // Check if this move matches the solution
+                if (this.isCorrectMove(move, this.currentSolution)) {
+                    // Puzzle solved!
+                    this.showFeedback(true, '✅ Excellent! Correct move!');
+                    document.getElementById('solutionText').textContent = this.currentSolution;
+                    this.correctCount++;
+                    this.updateStats();
+                    this.saveState();
+                    setTimeout(() => this.nextPuzzle(), 2000);
                 } else {
                     // Wrong move
-                    this.showFeedback(false, 'Incorrect move. Try again!');
+                    this.game.undo(); // Undo the move
+                    this.showFeedback(false, '❌ Incorrect! Try again.');
                     this.addToMistakes();
-                    setTimeout(() => this.resetCurrentPuzzle(), 1500);
+                    setTimeout(() => {
+                        this.board.position(this.game.fen());
+                        this.clearFeedback();
+                    }, 1500);
                     return 'snapback';
                 }
             }
 
-            isCorrectMove(moveString, expectedMove) {
-                // Simple comparison - could be enhanced
-                return moveString === expectedMove.slice(0, 4) || 
-                       expectedMove.includes(moveString.slice(2, 4));
+            isCorrectMove(move, solutionStr) {
+                // Convert the solution string to a move and compare
+                const tempGame = new Chess(this.initialPosition);
+                
+                try {
+                    // Try to make the solution move
+                    const solutionMove = tempGame.move(solutionStr);
+                    
+                    if (!solutionMove) {
+                        // Try with different notation formats
+                        const variations = [
+                            solutionStr,
+                            solutionStr.replace('#', '+'),
+                            solutionStr.replace('+', ''),
+                            solutionStr.replace('#', '')
+                        ];
+                        
+                        for (const variant of variations) {
+                            const tryMove = tempGame.move(variant);
+                            if (tryMove) {
+                                return this.movesMatch(move, tryMove);
+                            }
+                        }
+                        return false;
+                    }
+                    
+                    return this.movesMatch(move, solutionMove);
+                } catch (e) {
+                    console.error('Error comparing moves:', e);
+                    // Fallback: compare san notation
+                    return move.san === solutionStr || 
+                           move.san.replace(/[+#]/, '') === solutionStr.replace(/[+#]/, '');
+                }
+            }
+
+            movesMatch(move1, move2) {
+                // Compare the essential parts of the moves
+                return move1.from === move2.from && 
+                       move1.to === move2.to &&
+                       move1.piece === move2.piece &&
+                       move1.promotion === move2.promotion;
+            }
+
+            showHint() {
+                if (!this.currentSolution) return;
+                
+                const tempGame = new Chess(this.initialPosition);
+                try {
+                    const move = tempGame.move(this.currentSolution);
+                    if (move) {
+                        const piece = move.piece.toUpperCase();
+                        const pieceNames = {
+                            'P': 'Pawn', 'N': 'Knight', 'B': 'Bishop',
+                            'R': 'Rook', 'Q': 'Queen', 'K': 'King'
+                        };
+                        const pieceName = pieceNames[piece] || 'Piece';
+                        const targetSquare = move.to;
+                        
+                        document.getElementById('hintText').textContent = 
+                            `Hint: Move the ${pieceName} to ${targetSquare}`;
+                    }
+                } catch (e) {
+                    document.getElementById('hintText').textContent = 
+                        `Hint: Look for ${this.currentSolution.slice(0, 2)}`;
+                }
             }
 
             resetCurrentPuzzle() {
@@ -558,13 +601,23 @@
 
             nextPuzzle() {
                 this.currentPuzzleIndex++;
+                if (this.currentPuzzleIndex >= this.puzzles.length) {
+                    this.currentPuzzleIndex = 0; // Loop back to start
+                }
                 this.loadPuzzle(this.currentPuzzleIndex);
             }
 
             addToMistakes() {
                 const currentPuzzle = this.puzzles[this.currentPuzzleIndex];
-                if (!this.mistakes.find(m => m.pgn === currentPuzzle.pgn)) {
+                // Check if this puzzle is already in mistakes
+                const alreadyInMistakes = this.mistakes.some(m => 
+                    m.headers.Event === currentPuzzle.headers.Event &&
+                    m.fen === currentPuzzle.fen
+                );
+                
+                if (!alreadyInMistakes) {
                     this.mistakes.push(currentPuzzle);
+                    this.updateStats();
                     this.saveState();
                 }
             }
@@ -573,22 +626,7 @@
                 document.getElementById('currentPuzzle').textContent = this.currentPuzzleIndex + 1;
                 document.getElementById('totalPuzzles').textContent = this.puzzles.length;
                 document.getElementById('toMove').textContent = this.game.turn() === 'w' ? 'White' : 'Black';
-                document.getElementById('eventName').textContent = puzzle.headers.Event || 'Unknown';
-            }
-
-            updateMoveList() {
-                const moveList = document.getElementById('moveList');
-                const displayMoves = [];
-                
-                for (let i = 0; i < this.moveIndex; i++) {
-                    displayMoves.push(this.currentSolution[i]);
-                }
-                
-                if (displayMoves.length > 0) {
-                    moveList.innerHTML = displayMoves.join(' ');
-                } else {
-                    moveList.innerHTML = 'Make your move...';
-                }
+                document.getElementById('eventName').textContent = puzzle.headers.Event || `Puzzle ${this.currentPuzzleIndex + 1}`;
             }
 
             updateStats() {
@@ -614,19 +652,45 @@
                 feedback.innerHTML = `
                     <h3>🏆 All Puzzles Completed! 🏆</h3>
                     <p>Correct: ${this.correctCount} | Mistakes: ${this.mistakes.length}</p>
+                    <p>Starting over from puzzle 1...</p>
                 `;
                 feedback.style.display = 'block';
+                setTimeout(() => {
+                    this.currentPuzzleIndex = 0;
+                    this.loadPuzzle(0);
+                }, 3000);
             }
 
             downloadMistakes() {
                 if (this.mistakes.length === 0) {
-                    alert('No mistakes to download! Keep up the good work! 👍');
+                    alert('No mistakes to download! Great job! 👍');
                     return;
                 }
 
                 let pgnContent = '';
-                for (const mistake of this.mistakes) {
-                    pgnContent += mistake.pgn + '\n\n';
+                for (let i = 0; i < this.mistakes.length; i++) {
+                    const mistake = this.mistakes[i];
+                    
+                    // Reconstruct the PGN with proper formatting
+                    let puzzlePgn = '';
+                    
+                    // Add headers
+                    for (const [key, value] of Object.entries(mistake.headers)) {
+                        puzzlePgn += `[${key} "${value}"]\n`;
+                    }
+                    
+                    // Add FEN if not already in headers
+                    if (!mistake.headers.FEN && mistake.fen) {
+                        puzzlePgn += `[FEN "${mistake.fen}"]\n`;
+                    }
+                    
+                    // Add blank line and solution
+                    puzzlePgn += '\n' + mistake.solution + ' *\n';
+                    
+                    pgnContent += puzzlePgn;
+                    if (i < this.mistakes.length - 1) {
+                        pgnContent += '\n';
+                    }
                 }
 
                 const blob = new Blob([pgnContent], { type: 'text/plain' });
@@ -643,7 +707,8 @@
             saveState() {
                 const state = {
                     mistakes: this.mistakes,
-                    correctCount: this.correctCount
+                    correctCount: this.correctCount,
+                    currentPuzzleIndex: this.currentPuzzleIndex
                 };
                 localStorage.setItem('chessPuzzleState', JSON.stringify(state));
             }
@@ -651,9 +716,14 @@
             loadState() {
                 const saved = localStorage.getItem('chessPuzzleState');
                 if (saved) {
-                    const state = JSON.parse(saved);
-                    this.mistakes = state.mistakes || [];
-                    this.correctCount = state.correctCount || 0;
+                    try {
+                        const state = JSON.parse(saved);
+                        this.mistakes = state.mistakes || [];
+                        this.correctCount = state.correctCount || 0;
+                        this.updateStats();
+                    } catch (e) {
+                        console.error('Error loading saved state:', e);
+                    }
                 }
             }
         }

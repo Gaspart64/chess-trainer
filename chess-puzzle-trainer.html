@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Puzzle Trainer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 30px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-section {
+            background: #f7f9fc;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .puzzle-area {
+            display: none;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .puzzle-area.active {
+            display: block;
+        }
+
+        .board-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #board {
+            width: 500px;
+            max-width: 100%;
+        }
+
+        .info-panel {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .puzzle-info {
+            background: #f7f9fc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .puzzle-info h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .puzzle-info p {
+            color: #718096;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-box .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-box .label {
+            font-size: 0.85em;
+            color: #718096;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .feedback {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .feedback.correct {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 2px solid #48bb78;
+        }
+
+        .feedback.incorrect {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 2px solid #f56565;
+        }
+
+        .move-history {
+            background: #f7f9fc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .move-history h4 {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .move-list {
+            font-family: 'Courier New', monospace;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .board-container {
+                flex-direction: column;
+            }
+            
+            #board {
+                width: 100%;
+            }
+            
+            .info-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♔ Chess Puzzle Trainer ♚</h1>
+        
+        <div class="upload-section" id="uploadSection">
+            <h2 style="color: #4a5568; margin-bottom: 15px;">Upload PGN File</h2>
+            <p style="color: #718096; margin-bottom: 20px;">Select a PGN file containing chess puzzles to begin training</p>
+            <div class="file-input-wrapper">
+                <input type="file" id="pgnFile" accept=".pgn">
+                <label for="pgnFile" class="file-input-label">
+                    📁 Choose PGN File
+                </label>
+            </div>
+        </div>
+
+        <div class="puzzle-area" id="puzzleArea">
+            <div class="board-container">
+                <div id="board"></div>
+                <div class="info-panel">
+                    <div class="puzzle-info">
+                        <h3>Puzzle Progress</h3>
+                        <p><strong>Current:</strong> <span id="currentPuzzle">1</span> / <span id="totalPuzzles">0</span></p>
+                        <p><strong>To Move:</strong> <span id="toMove">White</span></p>
+                        <p><strong>Event:</strong> <span id="eventName">-</span></p>
+                        
+                        <div class="stats">
+                            <div class="stat-box">
+                                <div class="value" id="correctCount">0</div>
+                                <div class="label">Correct</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value" id="mistakeCount">0</div>
+                                <div class="label">Mistakes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="btn btn-secondary" id="resetPuzzle">↺ Reset</button>
+                        <button class="btn btn-secondary" id="skipPuzzle">Skip →</button>
+                        <button class="btn btn-primary" id="downloadMistakes">📥 Download Mistakes</button>
+                    </div>
+
+                    <div id="feedback"></div>
+
+                    <div class="move-history">
+                        <h4>Solution Moves</h4>
+                        <div class="move-list" id="moveList">Waiting for moves...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script>
+        class ChessPuzzleTrainer {
+            constructor() {
+                this.puzzles = [];
+                this.currentPuzzleIndex = 0;
+                this.mistakes = [];
+                this.correctCount = 0;
+                this.board = null;
+                this.game = null;
+                this.currentSolution = [];
+                this.moveIndex = 0;
+                this.initialPosition = null;
+                
+                this.initializeEventListeners();
+                this.loadState();
+            }
+
+            initializeEventListeners() {
+                document.getElementById('pgnFile').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('resetPuzzle').addEventListener('click', () => this.resetCurrentPuzzle());
+                document.getElementById('skipPuzzle').addEventListener('click', () => this.nextPuzzle());
+                document.getElementById('downloadMistakes').addEventListener('click', () => this.downloadMistakes());
+            }
+
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const pgnContent = e.target.result;
+                    this.parsePGN(pgnContent);
+                };
+                reader.readAsText(file);
+            }
+
+            parsePGN(pgnContent) {
+                this.puzzles = [];
+                const games = pgnContent.split(/\n\n(?=\[)/);
+                
+                for (const gameText of games) {
+                    if (!gameText.trim()) continue;
+                    
+                    const puzzle = this.parseGame(gameText);
+                    if (puzzle) {
+                        this.puzzles.push(puzzle);
+                    }
+                }
+
+                if (this.puzzles.length > 0) {
+                    this.currentPuzzleIndex = 0;
+                    this.startPuzzles();
+                } else {
+                    alert('No valid puzzles found in the PGN file');
+                }
+            }
+
+            parseGame(gameText) {
+                const headers = {};
+                const headerRegex = /\[(\w+)\s+"([^"]+)"\]/g;
+                let match;
+                
+                while ((match = headerRegex.exec(gameText)) !== null) {
+                    headers[match[1]] = match[2];
+                }
+
+                const moveText = gameText.replace(/\[.*?\]\n?/g, '').trim();
+                const moves = this.extractMoves(moveText);
+
+                if (moves.length === 0) return null;
+
+                return {
+                    headers: headers,
+                    fen: headers.FEN || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+                    moves: moves,
+                    pgn: gameText
+                };
+            }
+
+            extractMoves(moveText) {
+                // Remove comments and variations
+                moveText = moveText.replace(/\{[^}]*\}/g, '');
+                moveText = moveText.replace(/\([^)]*\)/g, '');
+                moveText = moveText.replace(/\d+\./g, '');
+                
+                const moves = moveText.match(/[a-h][1-8][a-h][1-8][qrbn]?|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|O-O-O|O-O|[a-h]x[a-h][1-8]/gi);
+                return moves || [];
+            }
+
+            startPuzzles() {
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('puzzleArea').classList.add('active');
+                
+                this.initializeBoard();
+                this.loadPuzzle(this.currentPuzzleIndex);
+                this.updateStats();
+            }
+
+            initializeBoard() {
+                const config = {
+                    draggable: true,
+                    position: 'start',
+                    onDragStart: (source, piece, position, orientation) => this.onDragStart(source, piece, position, orientation),
+                    onDrop: (source, target) => this.onDrop(source, target),
+                    onSnapEnd: () => this.board.position(this.game.fen())
+                };
+                
+                this.board = Chessboard('board', config);
+                this.game = new Chess();
+                
+                $(window).resize(() => this.board.resize());
+            }
+
+            loadPuzzle(index) {
+                if (index >= this.puzzles.length) {
+                    this.showCompletion();
+                    return;
+                }
+
+                const puzzle = this.puzzles[index];
+                this.game = new Chess(puzzle.fen);
+                this.board.position(this.game.fen());
+                this.currentSolution = puzzle.moves;
+                this.moveIndex = 0;
+                this.initialPosition = puzzle.fen;
+
+                // Make the first move (opponent's move)
+                if (this.currentSolution.length > 0) {
+                    setTimeout(() => {
+                        this.makeMove(this.currentSolution[0]);
+                        this.moveIndex = 1;
+                        this.updateMoveList();
+                    }, 500);
+                }
+
+                this.updatePuzzleInfo(puzzle);
+                this.clearFeedback();
+            }
+
+            makeMove(move) {
+                try {
+                    // Try the move as-is first
+                    let result = this.game.move(move);
+                    
+                    // If that fails, try interpreting it as algebraic notation
+                    if (!result) {
+                        result = this.game.move({
+                            from: move.slice(0, 2),
+                            to: move.slice(2, 4),
+                            promotion: move[4] || 'q'
+                        });
+                    }
+                    
+                    if (result) {
+                        this.board.position(this.game.fen());
+                        return true;
+                    }
+                } catch (e) {
+                    console.error('Move error:', e);
+                }
+                return false;
+            }
+
+            onDragStart(source, piece, position, orientation) {
+                if (this.game.game_over()) return false;
+                
+                // Only allow moves for the side to move
+                const turn = this.game.turn();
+                if ((turn === 'w' && piece.search(/^b/) !== -1) ||
+                    (turn === 'b' && piece.search(/^w/) !== -1)) {
+                    return false;
+                }
+                
+                return true;
+            }
+
+            onDrop(source, target) {
+                const move = this.game.move({
+                    from: source,
+                    to: target,
+                    promotion: 'q'
+                });
+
+                if (move === null) return 'snapback';
+
+                // Check if this is the correct move
+                const expectedMove = this.currentSolution[this.moveIndex];
+                const moveString = source + target;
+                
+                if (this.isCorrectMove(moveString, expectedMove)) {
+                    this.moveIndex++;
+                    
+                    if (this.moveIndex >= this.currentSolution.length) {
+                        // Puzzle solved!
+                        this.showFeedback(true, 'Excellent! Puzzle solved! 🎉');
+                        this.correctCount++;
+                        this.updateStats();
+                        setTimeout(() => this.nextPuzzle(), 2000);
+                    } else {
+                        // Make the opponent's response
+                        setTimeout(() => {
+                            this.makeMove(this.currentSolution[this.moveIndex]);
+                            this.moveIndex++;
+                            this.updateMoveList();
+                        }, 500);
+                    }
+                } else {
+                    // Wrong move
+                    this.showFeedback(false, 'Incorrect move. Try again!');
+                    this.addToMistakes();
+                    setTimeout(() => this.resetCurrentPuzzle(), 1500);
+                    return 'snapback';
+                }
+            }
+
+            isCorrectMove(moveString, expectedMove) {
+                // Simple comparison - could be enhanced
+                return moveString === expectedMove.slice(0, 4) || 
+                       expectedMove.includes(moveString.slice(2, 4));
+            }
+
+            resetCurrentPuzzle() {
+                this.loadPuzzle(this.currentPuzzleIndex);
+            }
+
+            nextPuzzle() {
+                this.currentPuzzleIndex++;
+                this.loadPuzzle(this.currentPuzzleIndex);
+            }
+
+            addToMistakes() {
+                const currentPuzzle = this.puzzles[this.currentPuzzleIndex];
+                if (!this.mistakes.find(m => m.pgn === currentPuzzle.pgn)) {
+                    this.mistakes.push(currentPuzzle);
+                    this.saveState();
+                }
+            }
+
+            updatePuzzleInfo(puzzle) {
+                document.getElementById('currentPuzzle').textContent = this.currentPuzzleIndex + 1;
+                document.getElementById('totalPuzzles').textContent = this.puzzles.length;
+                document.getElementById('toMove').textContent = this.game.turn() === 'w' ? 'White' : 'Black';
+                document.getElementById('eventName').textContent = puzzle.headers.Event || 'Unknown';
+            }
+
+            updateMoveList() {
+                const moveList = document.getElementById('moveList');
+                const displayMoves = [];
+                
+                for (let i = 0; i < this.moveIndex; i++) {
+                    displayMoves.push(this.currentSolution[i]);
+                }
+                
+                if (displayMoves.length > 0) {
+                    moveList.innerHTML = displayMoves.join(' ');
+                } else {
+                    moveList.innerHTML = 'Make your move...';
+                }
+            }
+
+            updateStats() {
+                document.getElementById('correctCount').textContent = this.correctCount;
+                document.getElementById('mistakeCount').textContent = this.mistakes.length;
+            }
+
+            showFeedback(isCorrect, message) {
+                const feedback = document.getElementById('feedback');
+                feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+                feedback.textContent = message;
+                feedback.style.display = 'block';
+            }
+
+            clearFeedback() {
+                const feedback = document.getElementById('feedback');
+                feedback.style.display = 'none';
+            }
+
+            showCompletion() {
+                const feedback = document.getElementById('feedback');
+                feedback.className = 'feedback correct';
+                feedback.innerHTML = `
+                    <h3>🏆 All Puzzles Completed! 🏆</h3>
+                    <p>Correct: ${this.correctCount} | Mistakes: ${this.mistakes.length}</p>
+                `;
+                feedback.style.display = 'block';
+            }
+
+            downloadMistakes() {
+                if (this.mistakes.length === 0) {
+                    alert('No mistakes to download! Keep up the good work! 👍');
+                    return;
+                }
+
+                let pgnContent = '';
+                for (const mistake of this.mistakes) {
+                    pgnContent += mistake.pgn + '\n\n';
+                }
+
+                const blob = new Blob([pgnContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'mistakes.pgn';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            saveState() {
+                const state = {
+                    mistakes: this.mistakes,
+                    correctCount: this.correctCount
+                };
+                localStorage.setItem('chessPuzzleState', JSON.stringify(state));
+            }
+
+            loadState() {
+                const saved = localStorage.getItem('chessPuzzleState');
+                if (saved) {
+                    const state = JSON.parse(saved);
+                    this.mistakes = state.mistakes || [];
+                    this.correctCount = state.correctCount || 0;
+                }
+            }
+        }
+
+        // Initialize the app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChessPuzzleTrainer();
+        });
+    </script>
+</body>
+</html>

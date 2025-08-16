@@ -6,6 +6,103 @@
     <title>Chess Puzzle Trainer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <style>
+        :root {
+            --bg-light: #f7f9fc;
+            --bg-dark: #2d3748;
+            --text-light: #4a5568;
+            --text-dark: #cbd5e0;
+            --primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --primary-btn-bg: #667eea;
+            --primary-btn-text: white;
+            --secondary-btn-bg-light: #e2e8f0;
+            --secondary-btn-bg-dark: #4a5568;
+            --secondary-btn-text-light: #4a5568;
+            --secondary-btn-text-dark: #e2e8f0;
+            --container-bg-light: white;
+            --container-bg-dark: #1a202c;
+            --container-shadow-light: 0 20px 60px rgba(0, 0, 0, 0.3);
+            --container-shadow-dark: 0 20px 60px rgba(0, 0, 0, 0.5);
+            --border-light: #cbd5e0;
+            --border-dark: #4a5568;
+            --stat-box-bg-light: white;
+            --stat-box-bg-dark: #2d3748;
+            --stat-box-border-light: #e2e8f0;
+            --stat-box-border-dark: #4a5568;
+            --feedback-correct-bg-light: #c6f6d5;
+            --feedback-correct-bg-dark: #2f855a;
+            --feedback-correct-text-light: #22543d;
+            --feedback-correct-text-dark: #c6f6d5;
+            --feedback-incorrect-bg-light: #fed7d7;
+            --feedback-incorrect-bg-dark: #c53030;
+            --feedback-incorrect-text-light: #742a2a;
+            --feedback-incorrect-text-dark: #fed7d7;
+        }
+
+        .dark-mode {
+            background: #1a202c !important;
+        }
+        
+        .dark-mode .container {
+            background: var(--container-bg-dark);
+            box-shadow: var(--container-shadow-dark);
+        }
+        
+        .dark-mode h1 {
+            background: var(--primary-bg);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .dark-mode h2, .dark-mode h3, .dark-mode p {
+            color: var(--text-dark) !important;
+        }
+
+        .dark-mode .upload-section,
+        .dark-mode .puzzle-info,
+        .dark-mode .solution-display {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+        }
+
+        .dark-mode .stat-box {
+            background: var(--stat-box-bg-dark);
+            border-color: var(--stat-box-border-dark);
+        }
+        
+        .dark-mode .stat-box .value {
+            color: var(--primary-btn-bg);
+        }
+
+        .dark-mode .stat-box .label {
+            color: var(--text-dark);
+        }
+
+        .dark-mode .btn-secondary {
+            background: var(--secondary-btn-bg-dark);
+            color: var(--secondary-btn-text-dark);
+        }
+
+        .dark-mode .solution-text {
+            color: var(--text-dark);
+        }
+        
+        .dark-mode .hint-text {
+            color: var(--text-dark);
+        }
+
+        .dark-mode .feedback.correct {
+            background: var(--feedback-correct-bg-dark);
+            color: var(--feedback-correct-text-dark);
+            border-color: var(--feedback-correct-bg-dark);
+        }
+        
+        .dark-mode .feedback.incorrect {
+            background: var(--feedback-incorrect-bg-dark);
+            color: var(--feedback-incorrect-text-dark);
+            border-color: var(--feedback-incorrect-bg-dark);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,22 +111,24 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-bg);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            transition: background 0.5s ease;
         }
 
         .container {
-            background: white;
+            background: var(--container-bg-light);
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--container-shadow-light);
             max-width: 900px;
             width: 100%;
             padding: 30px;
             animation: fadeIn 0.5s ease;
+            transition: background 0.5s ease, box-shadow 0.5s ease;
         }
 
         @keyframes fadeIn {
@@ -42,23 +141,24 @@
             color: #333;
             margin-bottom: 30px;
             font-size: 2.5em;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-bg);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            transition: color 0.5s ease;
         }
 
         .upload-section {
-            background: #f7f9fc;
+            background: var(--bg-light);
             padding: 30px;
             border-radius: 15px;
             margin-bottom: 30px;
-            border: 2px dashed #cbd5e0;
+            border: 2px dashed var(--border-light);
             transition: all 0.3s ease;
         }
 
         .upload-section:hover {
-            border-color: #667eea;
+            border-color: var(--primary-btn-bg);
             background: #f0f4ff;
         }
 
@@ -77,8 +177,8 @@
         .file-input-label {
             display: block;
             padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--primary-bg);
+            color: var(--primary-btn-text);
             border-radius: 10px;
             cursor: pointer;
             text-align: center;
@@ -125,22 +225,25 @@
         }
 
         .puzzle-info {
-            background: #f7f9fc;
+            background: var(--bg-light);
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
+            transition: background 0.5s ease;
         }
 
         .puzzle-info h3 {
-            color: #4a5568;
+            color: var(--text-light);
             margin-bottom: 15px;
             font-size: 1.2em;
+            transition: color 0.5s ease;
         }
 
         .puzzle-info p {
-            color: #718096;
+            color: var(--text-light);
             margin-bottom: 10px;
             font-size: 0.95em;
+            transition: color 0.5s ease;
         }
 
         .stats {
@@ -151,23 +254,26 @@
         }
 
         .stat-box {
-            background: white;
+            background: var(--stat-box-bg-light);
             padding: 10px;
             border-radius: 8px;
             text-align: center;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--stat-box-border-light);
+            transition: background 0.5s ease, border-color 0.5s ease;
         }
 
         .stat-box .value {
             font-size: 1.5em;
             font-weight: bold;
-            color: #667eea;
+            color: var(--primary-btn-bg);
+            transition: color 0.5s ease;
         }
 
         .stat-box .label {
             font-size: 0.85em;
-            color: #718096;
+            color: var(--text-light);
             margin-top: 5px;
+            transition: color 0.5s ease;
         }
 
         .controls {
@@ -190,8 +296,8 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--primary-bg);
+            color: var(--primary-btn-text);
         }
 
         .btn-primary:hover {
@@ -200,8 +306,9 @@
         }
 
         .btn-secondary {
-            background: #e2e8f0;
-            color: #4a5568;
+            background: var(--secondary-btn-bg-light);
+            color: var(--secondary-btn-text-light);
+            transition: background 0.5s ease, color 0.5s ease;
         }
 
         .btn-secondary:hover {
@@ -232,27 +339,29 @@
         }
 
         .feedback.correct {
-            background: #c6f6d5;
-            color: #22543d;
+            background: var(--feedback-correct-bg-light);
+            color: var(--feedback-correct-text-light);
             border: 2px solid #48bb78;
         }
 
         .feedback.incorrect {
-            background: #fed7d7;
-            color: #742a2a;
+            background: var(--feedback-incorrect-bg-light);
+            color: var(--feedback-incorrect-text-light);
             border: 2px solid #f56565;
         }
 
         .solution-display {
-            background: #f7f9fc;
+            background: var(--bg-light);
             padding: 15px;
             border-radius: 10px;
             margin-top: 20px;
+            transition: background 0.5s ease;
         }
 
         .solution-display h4 {
-            color: #4a5568;
+            color: var(--text-light);
             margin-bottom: 10px;
+            transition: color 0.5s ease;
         }
 
         .solution-text {
@@ -260,13 +369,15 @@
             color: #2d3748;
             font-size: 1.2em;
             font-weight: bold;
+            transition: color 0.5s ease;
         }
 
         .hint-text {
-            color: #718096;
+            color: var(--text-light);
             font-size: 0.9em;
             margin-top: 10px;
             font-style: italic;
+            transition: color 0.5s ease;
         }
 
         @media (max-width: 768px) {
@@ -300,7 +411,7 @@
         </div>
 
         <div class="puzzle-area" id="puzzleArea">
-            <div class="board-container">
+            <div class="board-container" id="mainPuzzleDisplay">
                 <div id="board"></div>
                 <div class="info-panel">
                     <div class="puzzle-info">
@@ -322,6 +433,7 @@
                     </div>
 
                     <div class="controls">
+                        <button class="btn btn-secondary" id="toggleDarkMode">🌙 Dark Mode</button>
                         <button class="btn btn-primary" id="restartSet">↺ Restart Set</button>
                         <button class="btn btn-secondary" id="resetPuzzle">↺ Reset</button>
                         <button class="btn btn-secondary" id="skipPuzzle">Skip →</button>
@@ -339,6 +451,7 @@
                     </div>
                 </div>
             </div>
+            <div id="endOfSetStats" style="display: none;"></div>
         </div>
     </div>
 
@@ -371,6 +484,7 @@
                 // Note: Using in-memory storage only as localStorage is not supported in artifacts
                 // For a real-world application, you would use localStorage
                 this.savedState = {};
+                this.isDarkMode = false;
 
                 this.initializeEventListeners();
                 this.loadState();
@@ -384,6 +498,7 @@
                 document.getElementById('showHint').addEventListener('click', () => this.showHint());
                 document.getElementById('randomizePuzzles').addEventListener('click', () => this.toggleRandomize());
                 document.getElementById('downloadMistakes').addEventListener('click', () => this.downloadMistakes());
+                document.getElementById('toggleDarkMode').addEventListener('click', () => this.toggleDarkMode());
             }
 
             handleFileUpload(event) {
@@ -476,6 +591,8 @@
             startPuzzles() {
                 document.getElementById('uploadSection').style.display = 'none';
                 document.getElementById('puzzleArea').classList.add('active');
+                document.getElementById('mainPuzzleDisplay').style.display = 'flex';
+                document.getElementById('endOfSetStats').style.display = 'none';
                 
                 // Initialize timing
                 this.setStartTime = Date.now();
@@ -811,21 +928,23 @@
                 const errorRate = this.originalPuzzles.length > 0 ? 
                     ((this.mistakes.length / this.originalPuzzles.length) * 100).toFixed(1) : 0;
                 
-                const feedback = document.getElementById('feedback');
-                feedback.className = 'feedback correct';
-                feedback.innerHTML = `
-                    <h3>🏆 Set Completed! 🏆</h3>
-                    <div style="text-align: left; margin-top: 15px;">
-                        <p><strong>📊 Final Statistics:</strong></p>
-                        <p>• <strong>Number of Errors:</strong> ${this.mistakes.length}</p>
-                        <p>• <strong>Error Rate:</strong> ${errorRate}%</p>
-                        <p>• <strong>Total Time:</strong> ${timeToCompletion}</p>
-                        <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
+                document.getElementById('mainPuzzleDisplay').style.display = 'none';
+                const endOfSetStats = document.getElementById('endOfSetStats');
+                endOfSetStats.style.display = 'block';
+
+                endOfSetStats.innerHTML = `
+                    <div class="feedback correct" style="display: flex; flex-direction: column;">
+                        <h3>🏆 Set Completed! 🏆</h3>
+                        <div style="text-align: left; margin-top: 15px;">
+                            <p><strong>📊 Final Statistics:</strong></p>
+                            <p>• <strong>Number of Errors:</strong> ${this.mistakes.length}</p>
+                            <p>• <strong>Error Rate:</strong> ${errorRate}%</p>
+                            <p>• <strong>Total Time:</strong> ${timeToCompletion}</p>
+                            <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="location.reload()">Start Over</button>
                     </div>
-                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="location.reload()">Start Over</button>
                 `;
-                feedback.style.display = 'block';
-                document.getElementById('puzzleArea').style.display = 'none';
             }
 
             downloadMistakes() {
@@ -844,6 +963,20 @@
                 link.href = URL.createObjectURL(blob);
                 link.download = 'chess_puzzles_mistakes.pgn';
                 link.click();
+            }
+
+            toggleDarkMode() {
+                this.isDarkMode = !this.isDarkMode;
+                const body = document.body;
+                const button = document.getElementById('toggleDarkMode');
+                
+                if (this.isDarkMode) {
+                    body.classList.add('dark-mode');
+                    button.textContent = '☀️ Light Mode';
+                } else {
+                    body.classList.remove('dark-mode');
+                    button.textContent = '🌙 Dark Mode';
+                }
             }
 
             saveState() {

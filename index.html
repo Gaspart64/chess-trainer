@@ -218,36 +218,6 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 15px 30px;
-            background: var(--primary-bg);
-            color: var(--primary-btn-text);
-            border-radius: 10px;
-            cursor: pointer;
-            text-align: center;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .file-input-label:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
-
         .puzzle-area {
             display: none;
             animation: slideIn 0.5s ease;
@@ -465,25 +435,16 @@
             <div id="fileLoader">
                 <p style="color: #718096; margin-bottom: 10px;">Select from a pre-loaded PGN file:</p>
                 <!-- Dropdown to select a PGN file -->
-              <select id="openPGN" onchange="loadPGNFile()">
-
+                <select id="openPGN">
                     <option value="">Select a PGN file...</option>
-
                     <option value="./PGN/1.pgn">Set 1</option>
-
                     <option value="./PGN/2.pgn">Set 2</option>
-
                     <option value="./PGN/3.pgn">Set 3</option>
-
                     <option value="./PGN/4.pgn">Set 4</option>
-
                     <option value="./PGN/5.pgn">Set 5</option>
-
                 </select>
-
                 <p style="color: #718096; margin-top: 20px; margin-bottom: 10px;">Or upload your own:</p>
-
-                <label class="upload-label" for="pgnFileInput">Choose File</label>
+                <label class="upload-label" for="pgnFileInput">📁 Choose File</label>
                 <input type="file" id="pgnFileInput" accept=".pgn" style="display: none;">
             </div>
         </div>
@@ -564,7 +525,7 @@
                 this.initializeEventListeners();
                 this.loadState();
                 
-                // Make trainer globally accessible for the loadPGNFile function
+                // Make trainer globally accessible
                 window.trainer = this;
             }
 
@@ -838,3 +799,307 @@
                 
                 if (this.isCorrectMove(move, expectedMoveStr)) {
                     this.currentMoveIndex++;
+                    
+                    if (this.currentMoveIndex >= this.solutionMoves.length) {
+                        // Puzzle completed
+                        const puzzleTime = Date.now() - this.puzzleStartTime;
+                        this.puzzleTimes.push(puzzleTime);
+                        this.totalPuzzleTime += puzzleTime;
+                        
+                        this.showFeedback(true, '✅ Excellent! Puzzle completed!');
+                        this.updateSolutionDisplay(true);
+                        this.correctCount++;
+                        this.updateStats();
+                        this.saveState();
+                        setTimeout(() => this.nextPuzzle(), 2000);
+                    } else {
+                        // Continue with solution
+                        this.showFeedback(true, '✅ Good! Continue...');
+                        this.updateSolutionDisplay();
+                        
+                        setTimeout(() => {
+                            this.makeOpponentMove();
+                        }, 1000);
+                    }
+                } else {
+                    // Wrong move
+                    this.game.undo();
+                    this.showFeedback(false, '❌ Incorrect! Try again.');
+                    this.addToMistakes();
+                    setTimeout(() => {
+                        this.board.position(this.game.fen());
+                        this.clearFeedback();
+                    }, 1500);
+                    return 'snapback';
+                }
+            }
+
+            makeOpponentMove() {
+                if (this.currentMoveIndex >= this.solutionMoves.length) return;
+                
+                const expectedMove = this.solutionMoves[this.currentMoveIndex];
+                
+                try {
+                    const move = this.game.move(expectedMove);
+                    if (move) {
+                        this.board.position(this.game.fen());
+                        this.currentMoveIndex++;
+                        this.updateSolutionDisplay();
+                    }
+                } catch (e) {
+                    console.error('Error making opponent move:', e);
+                }
+            }
+
+            isCorrectMove(userMove, solutionStr) {
+                // Remove annotations for comparison
+                const userMoveSan = userMove.san.replace(/[+#!?]+$/, '');
+                const solutionMoveSan = solutionStr.replace(/[+#!?]+$/, '');
+                
+                return userMoveSan === solutionMoveSan;
+            }
+
+            updateSolutionDisplay(completed = false) {
+                if (completed) {
+                    document.getElementById('solutionText').textContent = this.solutionMoves.join(' ');
+                } else if (this.currentMoveIndex < this.solutionMoves.length) {
+                    const nextMove = this.solutionMoves[this.currentMoveIndex];
+                    const progress = `(${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
+                    document.getElementById('solutionText').textContent = `${nextMove} ${progress}`;
+                } else {
+                    document.getElementById('solutionText').textContent = '?';
+                }
+            }
+
+            restartSet() {
+                if (confirm('Are you sure you want to restart the entire set? This will reset your progress.')) {
+                    this.currentPuzzleIndex = 0;
+                    this.correctCount = 0;
+                    this.mistakes = [];
+                    this.isRandomized = false;
+                    this.puzzles = [...this.originalPuzzles];
+                    this.startPuzzles();
+                }
+            }
+
+            toggleRandomize() {
+                if (this.puzzles.length === 0) return;
+                
+                if (this.isRandomized) {
+                    this.puzzles = [...this.originalPuzzles];
+                    this.isRandomized = false;
+                    this.showFeedback(true, '📋 Restored original order');
+                    document.getElementById('randomizePuzzles').textContent = '🎲 Randomize';
+                } else {
+                    this.shuffleArray(this.puzzles);
+                    this.isRandomized = true;
+                    this.showFeedback(true, '🎲 Puzzles randomized!');
+                    document.getElementById('randomizePuzzles').textContent = '📋 Original Order';
+                }
+                
+                this.currentPuzzleIndex = 0;
+                this.loadPuzzle(0);
+                
+                setTimeout(() => this.clearFeedback(), 2000);
+            }
+
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
+            showHint() {
+                if (this.currentMoveIndex >= this.solutionMoves.length) return;
+                
+                const expectedMove = this.solutionMoves[this.currentMoveIndex];
+                const tempGame = new Chess(this.game.fen());
+                
+                try {
+                    const move = tempGame.move(expectedMove);
+                    if (move) {
+                        const piece = move.piece.toUpperCase();
+                        const pieceNames = {
+                            'P': 'Pawn', 'N': 'Knight', 'B': 'Bishop',
+                            'R': 'Rook', 'Q': 'Queen', 'K': 'King'
+                        };
+                        const pieceName = pieceNames[piece] || 'Piece';
+                        const targetSquare = move.to;
+                        
+                        document.getElementById('hintText').textContent = 
+                            `Hint: Move the ${pieceName} to ${targetSquare} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
+                    }
+                } catch (e) {
+                    document.getElementById('hintText').textContent = 
+                        `Hint: Try ${expectedMove} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
+                }
+            }
+
+            resetCurrentPuzzle() {
+                this.currentMoveIndex = 0;
+                this.puzzleStartTime = Date.now();
+                this.loadPuzzle(this.currentPuzzleIndex);
+            }
+
+            nextPuzzle() {
+                this.currentPuzzleIndex++;
+                if (this.currentPuzzleIndex >= this.puzzles.length) {
+                    this.showCompletion();
+                    return;
+                }
+                this.loadPuzzle(this.currentPuzzleIndex);
+            }
+
+            addToMistakes() {
+                const currentPuzzle = this.puzzles[this.currentPuzzleIndex];
+                const alreadyInMistakes = this.mistakes.some(m => 
+                    m.headers.Event === currentPuzzle.headers.Event &&
+                    m.fen === currentPuzzle.fen
+                );
+                
+                if (!alreadyInMistakes) {
+                    this.mistakes.push(currentPuzzle);
+                    this.updateStats();
+                    this.saveState();
+                }
+            }
+
+            updatePuzzleInfo(puzzle) {
+                let displayIndex = this.currentPuzzleIndex + 1;
+                if (this.isRandomized) {
+                    const origIndex = this.originalPuzzles.findIndex(p => 
+                        p.fen === puzzle.fen && JSON.stringify(p.solutionMoves) === JSON.stringify(puzzle.solutionMoves)
+                    );
+                    if (origIndex !== -1) {
+                        displayIndex = origIndex + 1;
+                    }
+                }
+                
+                document.getElementById('currentPuzzle').textContent = displayIndex;
+                document.getElementById('totalPuzzles').textContent = this.puzzles.length;
+                document.getElementById('toMove').textContent = this.game.turn() === 'w' ? 'White' : 'Black';
+                document.getElementById('eventName').textContent = puzzle.headers.Event || `Puzzle ${displayIndex}`;
+            }
+
+            updateStats() {
+                document.getElementById('correctCount').textContent = this.correctCount;
+                document.getElementById('mistakeCount').textContent = this.mistakes.length;
+            }
+
+            showFeedback(isCorrect, message) {
+                const feedback = document.getElementById('feedback');
+                feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'} visible`;
+                feedback.textContent = message;
+            }
+
+            clearFeedback() {
+                const feedback = document.getElementById('feedback');
+                feedback.classList.remove('visible');
+                feedback.className = 'feedback';
+            }
+
+            showCompletion() {
+                const totalSetTime = Date.now() - this.setStartTime;
+                const totalTimeSeconds = Math.round(totalSetTime / 1000);
+                const minutes = Math.floor(totalTimeSeconds / 60);
+                const seconds = totalTimeSeconds % 60;
+                const timeToCompletion = `${minutes}m ${seconds}s`;
+                
+                const averageTimeMs = this.puzzleTimes.length > 0 ? 
+                    this.puzzleTimes.reduce((a, b) => a + b, 0) / this.puzzleTimes.length : 0;
+                const avgSeconds = Math.round(averageTimeMs / 1000);
+                const avgMinutes = Math.floor(avgSeconds / 60);
+                const avgSecRemainder = avgSeconds % 60;
+                const averageTimePerPuzzle = `${avgMinutes}m ${avgSecRemainder}s`;
+                
+                const errorRate = this.originalPuzzles.length > 0 ? 
+                    ((this.mistakes.length / this.originalPuzzles.length) * 100).toFixed(1) : 0;
+                
+                document.getElementById('mainPuzzleDisplay').style.display = 'none';
+                const endOfSetStats = document.getElementById('endOfSetStats');
+                endOfSetStats.style.display = 'block';
+
+                endOfSetStats.innerHTML = `
+                    <div class="feedback correct visible" style="flex-direction: column;">
+                        <h3>🏆 Set Completed! 🏆</h3>
+                        <div style="text-align: left; margin-top: 15px;">
+                            <p><strong>📊 Final Statistics:</strong></p>
+                            <p>• <strong>Number of Errors:</strong> ${this.mistakes.length}</p>
+                            <p>• <strong>Error Rate:</strong> ${errorRate}%</p>
+                            <p>• <strong>Total Time:</strong> ${timeToCompletion}</p>
+                            <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="location.reload()">Start Over</button>
+                    </div>
+                `;
+            }
+
+            downloadMistakes() {
+                if (this.mistakes.length === 0) {
+                    alert('No mistakes to download.');
+                    return;
+                }
+                
+                let pgnContent = '';
+                this.mistakes.forEach(puzzle => {
+                    pgnContent += puzzle.pgn + '\n\n';
+                });
+                
+                const blob = new Blob([pgnContent], { type: 'text/plain;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'chess_puzzles_mistakes.pgn';
+                link.click();
+            }
+
+            toggleDarkMode() {
+                this.isDarkMode = !this.isDarkMode;
+                const body = document.body;
+                const button = document.getElementById('toggleDarkMode');
+                
+                if (this.isDarkMode) {
+                    body.classList.add('dark-mode');
+                    button.textContent = '☀️ Light Mode';
+                } else {
+                    body.classList.remove('dark-mode');
+                    button.textContent = '🌙 Dark Mode';
+                }
+            }
+
+            saveState() {
+                const state = {
+                    mistakes: this.mistakes,
+                    correctCount: this.correctCount,
+                    currentPuzzleIndex: this.currentPuzzleIndex,
+                    setStartTime: this.setStartTime,
+                    totalPuzzleTime: this.totalPuzzleTime,
+                    puzzleTimes: this.puzzleTimes
+                };
+                this.savedState = state;
+            }
+
+            loadState() {
+                if (this.savedState) {
+                    try {
+                        const state = this.savedState;
+                        this.mistakes = state.mistakes || [];
+                        this.correctCount = state.correctCount || 0;
+                        this.setStartTime = state.setStartTime || Date.now();
+                        this.totalPuzzleTime = state.totalPuzzleTime || 0;
+                        this.puzzleTimes = state.puzzleTimes || [];
+                        this.updateStats();
+                    } catch (e) {
+                        console.error('Error loading saved state:', e);
+                    }
+                }
+            }
+        }
+
+        // Initialize the app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChessPuzzleTrainer();
+        });
+    </script>
+</body>
+</html>

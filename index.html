@@ -225,6 +225,10 @@
             text-align: center;
             font-weight: 600;
             animation: fadeIn 0.3s ease;
+            min-height: 50px; /* Fixes screen jumping by reserving space */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .feedback.correct {
@@ -318,6 +322,7 @@
                     </div>
 
                     <div class="controls">
+                        <button class="btn btn-primary" id="restartSet">↺ Restart Set</button>
                         <button class="btn btn-secondary" id="resetPuzzle">↺ Reset</button>
                         <button class="btn btn-secondary" id="skipPuzzle">Skip →</button>
                         <button class="btn btn-secondary" id="showHint">💡 Hint</button>
@@ -373,6 +378,7 @@
 
             initializeEventListeners() {
                 document.getElementById('pgnFile').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('restartSet').addEventListener('click', () => this.restartSet());
                 document.getElementById('resetPuzzle').addEventListener('click', () => this.resetCurrentPuzzle());
                 document.getElementById('skipPuzzle').addEventListener('click', () => this.nextPuzzle());
                 document.getElementById('showHint').addEventListener('click', () => this.showHint());
@@ -654,6 +660,17 @@
                        move1.piece === move2.piece;
             }
 
+            restartSet() {
+                if (confirm('Are you sure you want to restart the entire set? This will reset your progress.')) {
+                    this.currentPuzzleIndex = 0;
+                    this.correctCount = 0;
+                    this.mistakes = [];
+                    this.isRandomized = false;
+                    this.puzzles = [...this.originalPuzzles]; // Reset to original order
+                    this.startPuzzles();
+                }
+            }
+
             toggleRandomize() {
                 if (this.puzzles.length === 0) return;
                 
@@ -722,7 +739,8 @@
             nextPuzzle() {
                 this.currentPuzzleIndex++;
                 if (this.currentPuzzleIndex >= this.puzzles.length) {
-                    this.currentPuzzleIndex = 0; // Loop back to start
+                    this.showCompletion(); // Show completion when all puzzles are done
+                    return;
                 }
                 this.loadPuzzle(this.currentPuzzleIndex);
             }
@@ -768,7 +786,7 @@
                 const feedback = document.getElementById('feedback');
                 feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
                 feedback.textContent = message;
-                feedback.style.display = 'block';
+                feedback.style.display = 'flex'; // Use flexbox for centering
             }
 
             clearFeedback() {

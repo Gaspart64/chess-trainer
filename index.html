@@ -333,7 +333,7 @@
             font-weight: 600;
             animation: fadeIn 0.3s ease;
             min-height: 50px; /* Fixes screen jumping by reserving space */
-            display: flex;
+            visibility: hidden;
             align-items: center;
             justify-content: center;
         }
@@ -349,6 +349,12 @@
             color: var(--feedback-incorrect-text-light);
             border: 2px solid #f56565;
         }
+        .feedback.visible {
+  visibility: visible;
+  display: flex; /* Apply flex only when visible */
+  align-items: center;
+  justify-content: center;
+}
 
         .solution-display {
             background: var(--bg-light);

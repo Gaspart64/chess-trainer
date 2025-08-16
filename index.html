@@ -437,18 +437,19 @@
                     .trim();
 
                 const moves = [];
-                const moveRegex = /\d+\.+(?:\s*([^\s]+))?(?:\s+([^\s]+))?/g; // Regex to handle moves with or without move numbers
+                // Corrected regex to handle both White and Black first moves
+                const moveRegex = /(?:\d+\.{1,3}\s*)?([^\s]+)(?:\s+([^\s]+))?/g;
                 let moveMatch;
                 
                 while ((moveMatch = moveRegex.exec(cleanMoves)) !== null) {
-                    if (moveMatch[1]) moves.push(moveMatch[1].replace(/[+#!?]+$/, '')); // Add white move
-                    if (moveMatch[2]) moves.push(moveMatch[2].replace(/[+#!?]+$/, '')); // Add black move
+                    if (moveMatch[1]) moves.push(moveMatch[1].replace(/[+#!?]+$/, ''));
+                    if (moveMatch[2]) moves.push(moveMatch[2].replace(/[+#!?]+$/, ''));
                 }
 
                 // Fallback for simple PGN notation without move numbers
                 if (moves.length === 0) {
                     const simpleMoves = cleanMoves.split(/\s+/)
-                        .filter(move => move && !move.match(/^\d+\.+/)) // Filter out empty strings and move numbers
+                        .filter(move => move && !move.match(/^\d+\.+/))
                         .map(move => move.replace(/[+#!?]+$/, ''));
                     
                     if (simpleMoves.length > 0) {
@@ -621,27 +622,28 @@
             }
 
             isCorrectMove(userMove, solutionStr) {
-                // A more efficient and direct comparison
+                // A direct and safe comparison of SAN
+                const userMoveSan = userMove.san;
+                const solutionMoveSan = solutionStr;
+
+                // Try a direct comparison, ignoring annotations
+                if (userMoveSan.replace(/[#+?!]+$/, '') === solutionMoveSan.replace(/[#+?!]+$/, '')) {
+                    return true;
+                }
+
+                // Fallback for cases where notation might differ.
                 const tempGame = new Chess(this.game.fen());
-                tempGame.undo(); // Undo the user's move to get back to the pre-move state
+                tempGame.undo(); // Undo the user's move to get the correct state
                 
                 try {
                     const solutionMove = tempGame.move(solutionStr);
-                    if (!solutionMove) {
-                        // Try with other formats, e.g., without check/mate symbols
-                        const cleanSolutionStr = solutionStr.replace(/[#+?!]+$/, '');
-                        const tryMove = tempGame.move(cleanSolutionStr);
-                        if (tryMove) {
-                            return this.movesMatch(userMove, tryMove);
-                        }
-                    } else {
-                        return this.movesMatch(userMove, solutionMove);
+                    if (solutionMove && this.movesMatch(userMove, solutionMove)) {
+                        return true;
                     }
                 } catch (e) {
-                    // Fallback to simpler check if parsing fails
-                    console.error('Error in isCorrectMove:', e);
+                    console.warn('Could not parse solution move:', solutionStr);
                 }
-                
+
                 return false;
             }
 
@@ -691,6 +693,7 @@
                 const tempGame = new Chess(this.game.fen());
                 
                 try {
+                    tempGame.undo(); // To get the pre-user move state
                     const move = tempGame.move(expectedMove);
                     if (move) {
                         const piece = move.piece.toUpperCase();

@@ -363,6 +363,10 @@
                 this.totalPuzzleTime = 0;
                 this.puzzleTimes = []; // Array to store individual puzzle times
                 
+                // Note: Using in-memory storage only as localStorage is not supported in artifacts
+                // For a real-world application, you would use localStorage
+                this.savedState = {};
+
                 this.initializeEventListeners();
                 this.loadState();
             }
@@ -426,39 +430,30 @@
                 // Extract moves after headers
                 const moveText = gameText.replace(/\[.*?\]\s*/g, '').trim();
                 
-                // Parse all moves in the solution - Enhanced for multi-move puzzles
-                // Remove comments and annotations first
                 const cleanMoves = moveText
                     .replace(/\{[^}]*\}/g, '') // Remove comments
                     .replace(/\([^)]*\)/g, '') // Remove variations
                     .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
                     .trim();
 
-                // Extract moves by parsing move numbers and moves
                 const moves = [];
-                const moveRegex = /\d+\.+\s*([^\s]+)(?:\s+([^\s]+))?/g;
+                const moveRegex = /\d+\.+(?:\s*([^\s]+))?(?:\s+([^\s]+))?/g; // Regex to handle moves with or without move numbers
                 let moveMatch;
                 
                 while ((moveMatch = moveRegex.exec(cleanMoves)) !== null) {
-                    // Add white move
-                    if (moveMatch[1]) {
-                        moves.push(moveMatch[1].replace(/[+#!?]+$/, '')); // Remove annotations
-                    }
-                    // Add black move if exists
-                    if (moveMatch[2]) {
-                        moves.push(moveMatch[2].replace(/[+#!?]+$/, '')); // Remove annotations
-                    }
+                    if (moveMatch[1]) moves.push(moveMatch[1].replace(/[+#!?]+$/, '')); // Add white move
+                    if (moveMatch[2]) moves.push(moveMatch[2].replace(/[+#!?]+$/, '')); // Add black move
                 }
 
-                // If no moves found with regex, try simple space splitting
+                // Fallback for simple PGN notation without move numbers
                 if (moves.length === 0) {
-                    const simpleMoves = cleanMoves
-                        .replace(/\d+\.+/g, '') // Remove move numbers
-                        .split(/\s+/)
-                        .filter(move => move && !move.match(/^[+#!?]+$/))
+                    const simpleMoves = cleanMoves.split(/\s+/)
+                        .filter(move => move && !move.match(/^\d+\.+/)) // Filter out empty strings and move numbers
                         .map(move => move.replace(/[+#!?]+$/, ''));
                     
-                    moves.push(...simpleMoves);
+                    if (simpleMoves.length > 0) {
+                        moves.push(...simpleMoves);
+                    }
                 }
 
                 if (moves.length === 0) return null;
@@ -466,7 +461,6 @@
                 return {
                     headers: headers,
                     fen: headers.FEN || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-                    solution: moves[0], // First move for display
                     solutionMoves: moves, // All moves in the solution
                     pgn: gameText
                 };
@@ -476,7 +470,7 @@
                 document.getElementById('uploadSection').style.display = 'none';
                 document.getElementById('puzzleArea').classList.add('active');
                 
-                // Initialize timing for new features
+                // Initialize timing
                 this.setStartTime = Date.now();
                 this.totalPuzzleTime = 0;
                 this.puzzleTimes = [];
@@ -515,8 +509,7 @@
                 const orientation = this.game.turn() === 'w' ? 'white' : 'black';
                 this.board.orientation(orientation);
                 
-                this.currentSolution = puzzle.solution;
-                this.solutionMoves = puzzle.solutionMoves || [puzzle.solution];
+                this.solutionMoves = puzzle.solutionMoves;
                 this.currentMoveIndex = 0;
                 this.initialPosition = puzzle.fen;
                 this.showingHint = false;
@@ -543,7 +536,7 @@
                 return true;
             }
 
-          onDrop(source, target) {
+            onDrop(source, target) {
                 // Try the move
                 const move = this.game.move({
                     from: source,
@@ -554,9 +547,9 @@
                 if (move === null) return 'snapback';
 
                 // Check if this move matches the current expected move in the solution
-                const expectedMove = this.solutionMoves[this.currentMoveIndex];
+                const expectedMoveStr = this.solutionMoves[this.currentMoveIndex];
                 
-                if (this.isCorrectMove(move, expectedMove)) {
+                if (this.isCorrectMove(move, expectedMoveStr)) {
                     // Correct move!
                     this.currentMoveIndex++;
                     
@@ -575,7 +568,7 @@
                         setTimeout(() => this.nextPuzzle(), 2000);
                     } else {
                         // Continue to next move in solution
-                        this.showFeedback(true, `✅ Good! Continue... (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`);
+                        this.showFeedback(true, `✅ Good! Continue...`);
                         this.updateSolutionDisplay();
                         
                         // If it's opponent's move, make it automatically after a short delay
@@ -602,12 +595,10 @@
                 if (this.currentMoveIndex >= this.solutionMoves.length) return;
                 
                 const expectedMove = this.solutionMoves[this.currentMoveIndex];
-                const tempGame = new Chess(this.game.fen());
                 
                 try {
-                    const move = tempGame.move(expectedMove);
+                    const move = this.game.move(expectedMove);
                     if (move) {
-                        this.game.move(expectedMove);
                         this.board.position(this.game.fen());
                         this.currentMoveIndex++;
                         this.updateSolutionDisplay();
@@ -629,51 +620,36 @@
                 }
             }
 
-            isCorrectMove(move, solutionStr) {
-                // Convert the solution string to a move and compare
-                const tempGame = new Chess(this.game.fen().split(' ').slice(0, -1).join(' ') + ' 0 1');
-                tempGame.load(this.game.fen());
-                tempGame.undo();
+            isCorrectMove(userMove, solutionStr) {
+                // A more efficient and direct comparison
+                const tempGame = new Chess(this.game.fen());
+                tempGame.undo(); // Undo the user's move to get back to the pre-move state
                 
                 try {
-                    // Try to make the solution move
                     const solutionMove = tempGame.move(solutionStr);
-                    
                     if (!solutionMove) {
-                        // Try with different notation formats
-                        const variations = [
-                            solutionStr,
-                            solutionStr.replace('#', '+'),
-                            solutionStr.replace('+', ''),
-                            solutionStr.replace('#', '')
-                        ];
-                        
-                        for (const variant of variations) {
-                            tempGame.load(this.game.fen());
-                            tempGame.undo();
-                            const tryMove = tempGame.move(variant);
-                            if (tryMove) {
-                                return this.movesMatch(move, tryMove);
-                            }
+                        // Try with other formats, e.g., without check/mate symbols
+                        const cleanSolutionStr = solutionStr.replace(/[#+?!]+$/, '');
+                        const tryMove = tempGame.move(cleanSolutionStr);
+                        if (tryMove) {
+                            return this.movesMatch(userMove, tryMove);
                         }
-                        return false;
+                    } else {
+                        return this.movesMatch(userMove, solutionMove);
                     }
-                    
-                    return this.movesMatch(move, solutionMove);
                 } catch (e) {
-                    console.error('Error comparing moves:', e);
-                    // Fallback: compare san notation
-                    return move.san === solutionStr || 
-                           move.san.replace(/[+#]/, '') === solutionStr.replace(/[+#]/, '');
+                    // Fallback to simpler check if parsing fails
+                    console.error('Error in isCorrectMove:', e);
                 }
+                
+                return false;
             }
 
             movesMatch(move1, move2) {
                 // Compare the essential parts of the moves
                 return move1.from === move2.from && 
                        move1.to === move2.to &&
-                       move1.piece === move2.piece &&
-                       move1.promotion === move2.promotion;
+                       move1.piece === move2.piece;
             }
 
             toggleRandomize() {
@@ -730,7 +706,7 @@
                     }
                 } catch (e) {
                     document.getElementById('hintText').textContent = 
-                        `Hint: Look for ${expectedMove.slice(0, 2)} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
+                        `Hint: Look for a move involving ${expectedMove.slice(0, 2)} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
                 }
             }
 
@@ -750,7 +726,7 @@
 
             addToMistakes() {
                 const currentPuzzle = this.puzzles[this.currentPuzzleIndex];
-                // Check if this puzzle is already in mistakes
+                // Check if this puzzle is already in mistakes based on FEN and Event
                 const alreadyInMistakes = this.mistakes.some(m => 
                     m.headers.Event === currentPuzzle.headers.Event &&
                     m.fen === currentPuzzle.fen
@@ -764,12 +740,10 @@
             }
 
             updatePuzzleInfo(puzzle) {
-                // Use the actual position in the original array for display if not randomized
                 let displayIndex = this.currentPuzzleIndex + 1;
                 if (this.isRandomized) {
-                    // Find the original index of this puzzle
                     const origIndex = this.originalPuzzles.findIndex(p => 
-                        p.fen === puzzle.fen && p.solution === puzzle.solution
+                        p.fen === puzzle.fen && JSON.stringify(p.solutionMoves) === JSON.stringify(puzzle.solutionMoves)
                     );
                     if (origIndex !== -1) {
                         displayIndex = origIndex + 1;
@@ -800,7 +774,6 @@
             }
 
             showCompletion() {
-                // Enhanced completion with detailed statistics
                 const totalSetTime = Date.now() - this.setStartTime;
                 const totalTimeSeconds = Math.round(totalSetTime / 1000);
                 const minutes = Math.floor(totalTimeSeconds / 60);
@@ -809,9 +782,10 @@
                 
                 const averageTimeMs = this.puzzleTimes.length > 0 ? 
                     this.puzzleTimes.reduce((a, b) => a + b, 0) / this.puzzleTimes.length : 0;
-                const avgMinutes = Math.floor(averageTimeMs / 60000);
-                const avgSeconds = Math.floor((averageTimeMs % 60000) / 1000);
-                const averageTimePerPuzzle = `${avgMinutes}m ${avgSeconds}s`;
+                const avgSeconds = Math.round(averageTimeMs / 1000);
+                const avgMinutes = Math.floor(avgSeconds / 60);
+                const avgSecRemainder = avgSeconds % 60;
+                const averageTimePerPuzzle = `${avgMinutes}m ${avgSecRemainder}s`;
                 
                 const errorRate = this.originalPuzzles.length > 0 ? 
                     ((this.mistakes.length / this.originalPuzzles.length) * 100).toFixed(1) : 0;
@@ -823,104 +797,32 @@
                     <div style="text-align: left; margin-top: 15px;">
                         <p><strong>📊 Final Statistics:</strong></p>
                         <p>• <strong>Number of Errors:</strong> ${this.mistakes.length}</p>
-                        <p>• <strong>Time to Completion:</strong> ${timeToCompletion}</p>
-                        <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
                         <p>• <strong>Error Rate:</strong> ${errorRate}%</p>
-                        <p style="margin-top: 15px;">• <strong>Total Puzzles:</strong> ${this.originalPuzzles.length}</p>
-                        <p>• <strong>Correctly Solved:</strong> ${this.correctCount}</p>
+                        <p>• <strong>Total Time:</strong> ${timeToCompletion}</p>
+                        <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
                     </div>
-                    <p style="margin-top: 15px; font-style: italic;">Starting over from puzzle 1...</p>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="location.reload()">Start Over</button>
                 `;
                 feedback.style.display = 'block';
-                
-                setTimeout(() => {
-                    // Reset for new set
-                    this.currentPuzzleIndex = 0;
-                    this.setStartTime = Date.now();
-                    this.totalPuzzleTime = 0;
-                    this.puzzleTimes = [];
-                    this.loadPuzzle(0);
-                }, 5000); // Give more time to read statistics
+                document.getElementById('puzzleArea').style.display = 'none';
             }
 
             downloadMistakes() {
                 if (this.mistakes.length === 0) {
-                    alert('No mistakes to download! Great job! 👍');
+                    alert('No mistakes to download.');
                     return;
                 }
-
+                
                 let pgnContent = '';
-                for (let i = 0; i < this.mistakes.length; i++) {
-                    const mistake = this.mistakes[i];
-                    
-                    // Reconstruct the PGN with proper formatting for multi-move puzzles
-                    let puzzlePgn = '';
-                    
-                    // Add headers
-                    for (const [key, value] of Object.entries(mistake.headers)) {
-                        puzzlePgn += `[${key} "${value}"]\n`;
-                    }
-                    
-                    // Add FEN if not already in headers
-                    if (!mistake.headers.FEN && mistake.fen) {
-                        puzzlePgn += `[FEN "${mistake.fen}"]\n`;
-                    }
-                    
-                    // Add blank line and solution moves
-                    puzzlePgn += '\n';
-                    const solutionMoves = mistake.solutionMoves || [mistake.solution];
-                    
-                    // Format moves with proper numbering
-                    let moveNumber = 1;
-                    let isWhiteMove = true;
-                    if (mistake.fen) {
-                        // Determine starting move number and color from FEN
-                        const fenParts = mistake.fen.split(' ');
-                        if (fenParts.length >= 6) {
-                            moveNumber = parseInt(fenParts[5]) || 1;
-                            isWhiteMove = fenParts[1] === 'w';
-                        }
-                    }
-                    
-                    let formattedMoves = '';
-                    for (let j = 0; j < solutionMoves.length; j++) {
-                        if (isWhiteMove) {
-                            formattedMoves += `${moveNumber}. ${solutionMoves[j]}`;
-                        } else {
-                            if (j === 0) {
-                                formattedMoves += `${moveNumber}... ${solutionMoves[j]}`;
-                            } else {
-                                formattedMoves += ` ${solutionMoves[j]}`;
-                            }
-                        }
-                        
-                        isWhiteMove = !isWhiteMove;
-                        if (isWhiteMove) {
-                            moveNumber++;
-                        }
-                        
-                        if (j < solutionMoves.length - 1) {
-                            formattedMoves += ' ';
-                        }
-                    }
-                    
-                    puzzlePgn += formattedMoves + ' *\n';
-                    
-                    pgnContent += puzzlePgn;
-                    if (i < this.mistakes.length - 1) {
-                        pgnContent += '\n';
-                    }
-                }
-
-                const blob = new Blob([pgnContent], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'mistakes.pgn';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                this.mistakes.forEach(puzzle => {
+                    pgnContent += puzzle.pgn + '\n\n';
+                });
+                
+                const blob = new Blob([pgnContent], { type: 'text/plain;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'chess_puzzles_mistakes.pgn';
+                link.click();
             }
 
             saveState() {

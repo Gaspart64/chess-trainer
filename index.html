@@ -351,9 +351,17 @@
                 this.board = null;
                 this.game = null;
                 this.currentSolution = null;
+                this.solutionMoves = []; // Array of moves for multi-move puzzles
+                this.currentMoveIndex = 0; // Track which move in solution we're on
                 this.initialPosition = null;
                 this.showingHint = false;
                 this.isRandomized = false;
+                
+                // Timing variables for new features
+                this.setStartTime = null;
+                this.puzzleStartTime = null;
+                this.totalPuzzleTime = 0;
+                this.puzzleTimes = []; // Array to store individual puzzle times
                 
                 this.initializeEventListeners();
                 this.loadState();
@@ -418,25 +426,48 @@
                 // Extract moves after headers
                 const moveText = gameText.replace(/\[.*?\]\s*/g, '').trim();
                 
-                // Parse the solution move(s)
-                // Remove move numbers, results, and clean up
+                // Parse all moves in the solution - Enhanced for multi-move puzzles
+                // Remove comments and annotations first
                 const cleanMoves = moveText
                     .replace(/\{[^}]*\}/g, '') // Remove comments
                     .replace(/\([^)]*\)/g, '') // Remove variations
                     .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
-                    .replace(/\d+\.+/g, '') // Remove move numbers
                     .trim();
 
-                // Extract the first move as the solution
-                const moveMatch = cleanMoves.match(/\S+/);
-                const solutionMove = moveMatch ? moveMatch[0] : null;
+                // Extract moves by parsing move numbers and moves
+                const moves = [];
+                const moveRegex = /\d+\.+\s*([^\s]+)(?:\s+([^\s]+))?/g;
+                let moveMatch;
+                
+                while ((moveMatch = moveRegex.exec(cleanMoves)) !== null) {
+                    // Add white move
+                    if (moveMatch[1]) {
+                        moves.push(moveMatch[1].replace(/[+#!?]+$/, '')); // Remove annotations
+                    }
+                    // Add black move if exists
+                    if (moveMatch[2]) {
+                        moves.push(moveMatch[2].replace(/[+#!?]+$/, '')); // Remove annotations
+                    }
+                }
 
-                if (!solutionMove) return null;
+                // If no moves found with regex, try simple space splitting
+                if (moves.length === 0) {
+                    const simpleMoves = cleanMoves
+                        .replace(/\d+\.+/g, '') // Remove move numbers
+                        .split(/\s+/)
+                        .filter(move => move && !move.match(/^[+#!?]+$/))
+                        .map(move => move.replace(/[+#!?]+$/, ''));
+                    
+                    moves.push(...simpleMoves);
+                }
+
+                if (moves.length === 0) return null;
 
                 return {
                     headers: headers,
                     fen: headers.FEN || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-                    solution: solutionMove,
+                    solution: moves[0], // First move for display
+                    solutionMoves: moves, // All moves in the solution
                     pgn: gameText
                 };
             }
@@ -444,6 +475,11 @@
             startPuzzles() {
                 document.getElementById('uploadSection').style.display = 'none';
                 document.getElementById('puzzleArea').classList.add('active');
+                
+                // Initialize timing for new features
+                this.setStartTime = Date.now();
+                this.totalPuzzleTime = 0;
+                this.puzzleTimes = [];
                 
                 this.initializeBoard();
                 this.loadPuzzle(this.currentPuzzleIndex);
@@ -480,12 +516,17 @@
                 this.board.orientation(orientation);
                 
                 this.currentSolution = puzzle.solution;
+                this.solutionMoves = puzzle.solutionMoves || [puzzle.solution];
+                this.currentMoveIndex = 0;
                 this.initialPosition = puzzle.fen;
                 this.showingHint = false;
+                
+                // Start timing for this puzzle
+                this.puzzleStartTime = Date.now();
 
                 this.updatePuzzleInfo(puzzle);
                 this.clearFeedback();
-                document.getElementById('solutionText').textContent = '?';
+                this.updateSolutionDisplay();
                 document.getElementById('hintText').textContent = '';
             }
 
@@ -512,15 +553,40 @@
 
                 if (move === null) return 'snapback';
 
-                // Check if this move matches the solution
-                if (this.isCorrectMove(move, this.currentSolution)) {
-                    // Puzzle solved!
-                    this.showFeedback(true, '✅ Excellent! Correct move!');
-                    document.getElementById('solutionText').textContent = this.currentSolution;
-                    this.correctCount++;
-                    this.updateStats();
-                    this.saveState();
-                    setTimeout(() => this.nextPuzzle(), 2000);
+                // Check if this move matches the current expected move in the solution
+                const expectedMove = this.solutionMoves[this.currentMoveIndex];
+                
+                if (this.isCorrectMove(move, expectedMove)) {
+                    // Correct move!
+                    this.currentMoveIndex++;
+                    
+                    // Check if we've completed all moves in the solution
+                    if (this.currentMoveIndex >= this.solutionMoves.length) {
+                        // Puzzle solved completely!
+                        const puzzleTime = Date.now() - this.puzzleStartTime;
+                        this.puzzleTimes.push(puzzleTime);
+                        this.totalPuzzleTime += puzzleTime;
+                        
+                        this.showFeedback(true, '✅ Excellent! Puzzle completed!');
+                        this.updateSolutionDisplay(true);
+                        this.correctCount++;
+                        this.updateStats();
+                        this.saveState();
+                        setTimeout(() => this.nextPuzzle(), 2000);
+                    } else {
+                        // Continue to next move in solution
+                        this.showFeedback(true, `✅ Good! Continue... (${this.currentMoveIndex}/${this.solutionMoves.length})`);
+                        this.updateSolutionDisplay();
+                        
+                        // If it's opponent's move, make it automatically after a short delay
+                        if (this.currentMoveIndex < this.solutionMoves.length) {
+                            setTimeout(() => {
+                                this.makeOpponentMove();
+                            }, 1000);
+                        }
+                        
+                        setTimeout(() => this.clearFeedback(), 1500);
+                    }
                 } else {
                     // Wrong move
                     this.game.undo(); // Undo the move
@@ -534,9 +600,42 @@
                 }
             }
 
+            makeOpponentMove() {
+                if (this.currentMoveIndex >= this.solutionMoves.length) return;
+                
+                const expectedMove = this.solutionMoves[this.currentMoveIndex];
+                const tempGame = new Chess(this.game.fen());
+                
+                try {
+                    const move = tempGame.move(expectedMove);
+                    if (move) {
+                        this.game.move(expectedMove);
+                        this.board.position(this.game.fen());
+                        this.currentMoveIndex++;
+                        this.updateSolutionDisplay();
+                    }
+                } catch (e) {
+                    console.error('Error making opponent move:', e);
+                }
+            }
+
+            updateSolutionDisplay(completed = false) {
+                if (completed) {
+                    document.getElementById('solutionText').textContent = this.solutionMoves.join(' ');
+                } else if (this.currentMoveIndex < this.solutionMoves.length) {
+                    const nextMove = this.solutionMoves[this.currentMoveIndex];
+                    const progress = `(${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
+                    document.getElementById('solutionText').textContent = `${nextMove} ${progress}`;
+                } else {
+                    document.getElementById('solutionText').textContent = '?';
+                }
+            }
+
             isCorrectMove(move, solutionStr) {
                 // Convert the solution string to a move and compare
-                const tempGame = new Chess(this.initialPosition);
+                const tempGame = new Chess(this.game.fen().split(' ').slice(0, -1).join(' ') + ' 0 1');
+                tempGame.load(this.game.fen());
+                tempGame.undo();
                 
                 try {
                     // Try to make the solution move
@@ -552,6 +651,8 @@
                         ];
                         
                         for (const variant of variations) {
+                            tempGame.load(this.game.fen());
+                            tempGame.undo();
                             const tryMove = tempGame.move(variant);
                             if (tryMove) {
                                 return this.movesMatch(move, tryMove);
@@ -610,11 +711,13 @@
             }
 
             showHint() {
-                if (!this.currentSolution) return;
+                if (this.currentMoveIndex >= this.solutionMoves.length) return;
                 
-                const tempGame = new Chess(this.initialPosition);
+                const expectedMove = this.solutionMoves[this.currentMoveIndex];
+                const tempGame = new Chess(this.game.fen());
+                
                 try {
-                    const move = tempGame.move(this.currentSolution);
+                    const move = tempGame.move(expectedMove);
                     if (move) {
                         const piece = move.piece.toUpperCase();
                         const pieceNames = {
@@ -625,15 +728,17 @@
                         const targetSquare = move.to;
                         
                         document.getElementById('hintText').textContent = 
-                            `Hint: Move the ${pieceName} to ${targetSquare}`;
+                            `Hint: Move the ${pieceName} to ${targetSquare} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
                     }
                 } catch (e) {
                     document.getElementById('hintText').textContent = 
-                        `Hint: Look for ${this.currentSolution.slice(0, 2)}`;
+                        `Hint: Look for ${expectedMove.slice(0, 2)} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
                 }
             }
 
             resetCurrentPuzzle() {
+                this.currentMoveIndex = 0;
+                this.puzzleStartTime = Date.now(); // Reset puzzle timer
                 this.loadPuzzle(this.currentPuzzleIndex);
             }
 
@@ -697,18 +802,47 @@
             }
 
             showCompletion() {
+                // Enhanced completion with detailed statistics
+                const totalSetTime = Date.now() - this.setStartTime;
+                const totalTimeSeconds = Math.round(totalSetTime / 1000);
+                const minutes = Math.floor(totalTimeSeconds / 60);
+                const seconds = totalTimeSeconds % 60;
+                const timeToCompletion = `${minutes}m ${seconds}s`;
+                
+                const averageTimeMs = this.puzzleTimes.length > 0 ? 
+                    this.puzzleTimes.reduce((a, b) => a + b, 0) / this.puzzleTimes.length : 0;
+                const avgMinutes = Math.floor(averageTimeMs / 60000);
+                const avgSeconds = Math.floor((averageTimeMs % 60000) / 1000);
+                const averageTimePerPuzzle = `${avgMinutes}m ${avgSeconds}s`;
+                
+                const errorRate = this.originalPuzzles.length > 0 ? 
+                    ((this.mistakes.length / this.originalPuzzles.length) * 100).toFixed(1) : 0;
+                
                 const feedback = document.getElementById('feedback');
                 feedback.className = 'feedback correct';
                 feedback.innerHTML = `
-                    <h3>🏆 All Puzzles Completed! 🏆</h3>
-                    <p>Correct: ${this.correctCount} | Mistakes: ${this.mistakes.length}</p>
-                    <p>Starting over from puzzle 1...</p>
+                    <h3>🏆 Set Completed! 🏆</h3>
+                    <div style="text-align: left; margin-top: 15px;">
+                        <p><strong>📊 Final Statistics:</strong></p>
+                        <p>• <strong>Number of Errors:</strong> ${this.mistakes.length}</p>
+                        <p>• <strong>Time to Completion:</strong> ${timeToCompletion}</p>
+                        <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
+                        <p>• <strong>Error Rate:</strong> ${errorRate}%</p>
+                        <p style="margin-top: 15px;">• <strong>Total Puzzles:</strong> ${this.originalPuzzles.length}</p>
+                        <p>• <strong>Correctly Solved:</strong> ${this.correctCount}</p>
+                    </div>
+                    <p style="margin-top: 15px; font-style: italic;">Starting over from puzzle 1...</p>
                 `;
                 feedback.style.display = 'block';
+                
                 setTimeout(() => {
+                    // Reset for new set
                     this.currentPuzzleIndex = 0;
+                    this.setStartTime = Date.now();
+                    this.totalPuzzleTime = 0;
+                    this.puzzleTimes = [];
                     this.loadPuzzle(0);
-                }, 3000);
+                }, 5000); // Give more time to read statistics
             }
 
             downloadMistakes() {
@@ -721,7 +855,7 @@
                 for (let i = 0; i < this.mistakes.length; i++) {
                     const mistake = this.mistakes[i];
                     
-                    // Reconstruct the PGN with proper formatting
+                    // Reconstruct the PGN with proper formatting for multi-move puzzles
                     let puzzlePgn = '';
                     
                     // Add headers
@@ -734,8 +868,45 @@
                         puzzlePgn += `[FEN "${mistake.fen}"]\n`;
                     }
                     
-                    // Add blank line and solution
-                    puzzlePgn += '\n' + mistake.solution + ' *\n';
+                    // Add blank line and solution moves
+                    puzzlePgn += '\n';
+                    const solutionMoves = mistake.solutionMoves || [mistake.solution];
+                    
+                    // Format moves with proper numbering
+                    let moveNumber = 1;
+                    let isWhiteMove = true;
+                    if (mistake.fen) {
+                        // Determine starting move number and color from FEN
+                        const fenParts = mistake.fen.split(' ');
+                        if (fenParts.length >= 6) {
+                            moveNumber = parseInt(fenParts[5]) || 1;
+                            isWhiteMove = fenParts[1] === 'w';
+                        }
+                    }
+                    
+                    let formattedMoves = '';
+                    for (let j = 0; j < solutionMoves.length; j++) {
+                        if (isWhiteMove) {
+                            formattedMoves += `${moveNumber}. ${solutionMoves[j]}`;
+                        } else {
+                            if (j === 0) {
+                                formattedMoves += `${moveNumber}... ${solutionMoves[j]}`;
+                            } else {
+                                formattedMoves += ` ${solutionMoves[j]}`;
+                            }
+                        }
+                        
+                        isWhiteMove = !isWhiteMove;
+                        if (isWhiteMove) {
+                            moveNumber++;
+                        }
+                        
+                        if (j < solutionMoves.length - 1) {
+                            formattedMoves += ' ';
+                        }
+                    }
+                    
+                    puzzlePgn += formattedMoves + ' *\n';
                     
                     pgnContent += puzzlePgn;
                     if (i < this.mistakes.length - 1) {
@@ -758,18 +929,26 @@
                 const state = {
                     mistakes: this.mistakes,
                     correctCount: this.correctCount,
-                    currentPuzzleIndex: this.currentPuzzleIndex
+                    currentPuzzleIndex: this.currentPuzzleIndex,
+                    setStartTime: this.setStartTime,
+                    totalPuzzleTime: this.totalPuzzleTime,
+                    puzzleTimes: this.puzzleTimes
                 };
-                localStorage.setItem('chessPuzzleState', JSON.stringify(state));
+                // Note: Using in-memory storage only as localStorage is not supported in artifacts
+                this.savedState = state;
             }
 
             loadState() {
-                const saved = localStorage.getItem('chessPuzzleState');
-                if (saved) {
+                // Note: In a real environment, this would use localStorage
+                // For now, we'll just initialize with default values
+                if (this.savedState) {
                     try {
-                        const state = JSON.parse(saved);
+                        const state = this.savedState;
                         this.mistakes = state.mistakes || [];
                         this.correctCount = state.correctCount || 0;
+                        this.setStartTime = state.setStartTime || Date.now();
+                        this.totalPuzzleTime = state.totalPuzzleTime || 0;
+                        this.puzzleTimes = state.puzzleTimes || [];
                         this.updateStats();
                     } catch (e) {
                         console.error('Error loading saved state:', e);

@@ -543,7 +543,7 @@
                 return true;
             }
 
-            onDrop(source, target) {
+          onDrop(source, target) {
                 // Try the move
                 const move = this.game.move({
                     from: source,
@@ -575,7 +575,7 @@
                         setTimeout(() => this.nextPuzzle(), 2000);
                     } else {
                         // Continue to next move in solution
-                        this.showFeedback(true, `✅ Good! Continue... (${this.currentMoveIndex}/${this.solutionMoves.length})`);
+                        this.showFeedback(true, `✅ Good! Continue... (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`);
                         this.updateSolutionDisplay();
                         
                         // If it's opponent's move, make it automatically after a short delay
@@ -584,8 +584,6 @@
                                 this.makeOpponentMove();
                             }, 1000);
                         }
-                        
-                        setTimeout(() => this.clearFeedback(), 1500);
                     }
                 } else {
                     // Wrong move

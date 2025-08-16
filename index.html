@@ -448,16 +448,18 @@
             <h2 style="color: #4a5568; margin-bottom: 15px;">Load Puzzle Set</h2>
             <div id="fileLoader">
                 <p style="color: #718096; margin-bottom: 10px;">Select from a pre-loaded PGN file:</p>
-                <select id="pgnFileSelect">
-                    <option value="1.pgn">Easy Puzzles (1.pgn)</option>
-                    <option value="2.pgn">Medium Puzzles (2.pgn)</option>
-                    <option value="3.pgn">Hard Puzzles (3.pgn)</option>
-                    <option value="4.pgn">Mixed Puzzles (4.pgn)</option>
+                <!-- Dropdown to select a PGN file -->
+                <select id="openPGN" onchange="loadPGNFile()">
+                    <option value="">Select a PGN file...</option>
+                    <option value="./PGN/1.pgn">Set 1</option>
+                    <option value="./PGN/2.pgn">Set 2</option>
+                    <option value="./PGN/3.pgn">Set 3</option>
+                    <option value="./PGN/4.pgn">Set 4</option>
+                    <option value="./PGN/5.pgn">Set 5</option>
                 </select>
                 <p style="color: #718096; margin-top: 20px; margin-bottom: 10px;">Or upload your own:</p>
                 <label class="upload-label" for="pgnFileInput">Choose File</label>
                 <input type="file" id="pgnFileInput" accept=".pgn" style="display: none;">
-                <button class="btn btn-primary" id="loadPgnBtn">Load Puzzles</button>
             </div>
         </div>
 
@@ -535,19 +537,14 @@
                 this.puzzleTimes = [];
                 this.savedState = {};
                 this.isDarkMode = false;
-                this.pgnFiles = {
-                    '1.pgn': '[Event "Easy Puzzle 1"]\n[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"]\n[White "player"]\n[Black "opponent"]\n\n1. e4\n\n[Event "Easy Puzzle 2"]\n[FEN "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"]\n[White "player"]\n[Black "opponent"]\n\n1. e4\n\n[Event "Easy Puzzle 3"]\n[FEN "8/5p1p/4k1p1/1R2P3/6P1/4K2P/8/8 w - - 0 49"]\n[White "player"]\n[Black "opponent"]\n\n1. g5\n\n[Event "Easy Puzzle 4"]\n[FEN "r2qkb1r/ppp1nppp/3p1n2/3Pp3/2B1P3/5N2/PPP2PPP/RNBQK2R w KQkq - 1 7"]\n[White "player"]\n[Black "opponent"]\n\n1. O-O\n\n[Event "Easy Puzzle 5"]\n[FEN "r2q1rk1/1pp2ppp/2p5/p3p3/4P3/2P5/PP1P1PPP/R1BQR1K1 w - - 0 13"]\n[White "player"]\n[Black "opponent"]\n\n1. d3\n',
-                    '2.pgn': '[Event "Medium Puzzle 1"]\n[FEN "8/p5pk/1p5p/8/P1P5/2p5/1p6/1K2R2B w - - 0 40"]\n[White "player"]\n[Black "opponent"]\n\n1. Re8\n\n[Event "Medium Puzzle 2"]\n[FEN "r3kr2/p1pbqppp/2p5/8/4P3/4N3/PPPQ1PPP/R3K2R w KQq - 2 13"]\n[White "player"]\n[Black "opponent"]\n\n1. c4\n\n[Event "Medium Puzzle 3"]\n[FEN "2rq1rk1/pp1b1p1p/4p1p1/3p4/3Qn3/1BP5/PP2NPPP/3R1RK1 w - - 0 18"]\n[White "player"]\n[Black "opponent"]\n\n1. Qe5\n\n[Event "Medium Puzzle 4"]\n[FEN "8/4p2p/3p1rp1/p1pP1p2/1pP2R2/1P5P/PkP3P1/6K1 w - - 2 34"]\n[White "player"]\n[Black "opponent"]\n\n1. Re4\n\n[Event "Medium Puzzle 5"]\n[FEN "r4rk1/pb2bppp/1p2p3/2p1q3/2P1N3/1P1P4/P2QRPPP/R5K1 w - - 0 19"]\n[White "player"]\n[Black "opponent"]\n\n1. Rae1\n',
-                    '3.pgn': '[Event "Hard Puzzle 1"]\n[FEN "8/5B2/6pk/P7/1p2p3/4P3/1P2qP2/K2R4 w - - 2 48"]\n[White "player"]\n[Black "opponent"]\n\n1. Rd4\n\n[Event "Hard Puzzle 2"]\n[FEN "r3b1rk/p3qp1p/4p2Q/3pP3/3P4/P1N5/1P3PPP/4RRK1 w - - 1 23"]\n[White "player"]\n[Black "opponent"]\n\n1. Re3\n\n[Event "Hard Puzzle 3"]\n[FEN "1r2R1k1/3R1p1p/3p4/3P2p1/4P1P1/q6P/5P2/6K1 w - - 0 35"]\n[White "player"]\n[Black "opponent"]\n\n1. Rxd6\n\n[Event "Hard Puzzle 4"]\n[FEN "r4rk1/5p2/p3p2p/2R2p2/1PpP2q1/P3P1b1/2R2P1P/3Q2K1 w - - 0 31"]\n[White "player"]\n[Black "opponent"]\n\n1. fxg3\n\n[Event "Hard Puzzle 5"]\n[FEN "2k3r1/pppb3p/1b4r1/3p4/P2N4/2PR4/1P1B1PP1/R4K2 w - - 0 29"]\n[White "player"]\n[Black "opponent"]\n\n1. b4\n',
-                    '4.pgn': '[Event "Mixed Puzzle 1"]\n[FEN "r1bqkb1r/ppp1nppp/2n5/1B6/3p4/5N2/PPP2PPP/RNBQR1K1 w kq - 2 9"]\n[White "player"]\n[Black "opponent"]\n\n1. O-O\n\n[Event "Mixed Puzzle 2"]\n[FEN "8/pp4pp/2p1kp2/2p5/P3P3/1P3PPP/2P1K3/8 w - - 0 32"]\n[White "player"]\n[Black "opponent"]\n\n1. Kd3\n\n[Event "Mixed Puzzle 3"]\n[FEN "r3kr2/p1pbqppp/2p5/8/4P3/4N3/PPPQ1PPP/R3K2R w KQq - 2 13"]\n[White "player"]\n[Black "opponent"]\n\n1. c4\n\n[Event "Mixed Puzzle 4"]\n[FEN "8/5B2/6pk/P7/1p2p3/4P3/1P2qP2/K2R4 w - - 2 48"]\n[White "player"]\n[Black "opponent"]\n\n1. Rd4\n\n[Event "Mixed Puzzle 5"]\n[FEN "r4r1k/1b1q3p/p2p1p2/1p2p3/2p1P3/2N1Q3/PPP2PPP/R4RK1 w - - 0 20"]\n[White "player"]\n[Black "opponent"]\n\n1. Rad1\n'
-                };
 
                 this.initializeEventListeners();
                 this.loadState();
             }
 
             initializeEventListeners() {
-                document.getElementById('loadPgnBtn').addEventListener('click', () => this.loadPuzzles());
+                document.getElementById('pgnFileInput').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('openPGN').addEventListener('change', (e) => this.loadPGNFile(e));
                 document.getElementById('restartSet').addEventListener('click', () => this.restartSet());
                 document.getElementById('resetPuzzle').addEventListener('click', () => this.resetCurrentPuzzle());
                 document.getElementById('skipPuzzle').addEventListener('click', () => this.nextPuzzle());
@@ -556,29 +553,36 @@
                 document.getElementById('downloadMistakes').addEventListener('click', () => this.downloadMistakes());
                 document.getElementById('toggleDarkMode').addEventListener('click', () => this.toggleDarkMode());
             }
-
-            loadPuzzles() {
-                const fileInput = document.getElementById('pgnFileInput');
-                const fileSelect = document.getElementById('pgnFileSelect');
-                let pgnContent;
-
-                if (fileInput.files.length > 0) {
-                    const file = fileInput.files[0];
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.parsePGN(e.target.result);
-                    };
-                    reader.readAsText(file);
-                } else if (fileSelect.value) {
-                    pgnContent = this.pgnFiles[fileSelect.value];
-                    if (pgnContent) {
-                        this.parsePGN(pgnContent);
-                    } else {
-                        alert('Error: Could not find PGN content for this file.');
-                    }
-                } else {
-                    alert('Please select a file or choose one from the dropdown menu.');
+            
+            async loadPGNFile(event) {
+                const url = event.target.value;
+                if (!url) {
+                    return;
                 }
+                
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch PGN file from ${url}`);
+                    }
+                    const pgnContent = await response.text();
+                    this.parsePGN(pgnContent);
+                } catch (error) {
+                    alert(`Error loading PGN file: ${error.message}`);
+                    console.error('Error loading PGN file:', error);
+                }
+            }
+
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) {
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.parsePGN(e.target.result);
+                };
+                reader.readAsText(file);
             }
             
             parsePGN(pgnContent) {
@@ -1043,8 +1047,15 @@
             }
         }
 
+        function loadPGNFile() {
+            const trainer = window.trainer;
+            if (trainer && trainer.loadPGNFile) {
+                trainer.loadPGNFile({ target: document.getElementById('openPGN') });
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            new ChessPuzzleTrainer();
+            window.trainer = new ChessPuzzleTrainer();
         });
     </script>
 </body>

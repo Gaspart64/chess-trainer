@@ -332,10 +332,16 @@
             text-align: center;
             font-weight: 600;
             animation: fadeIn 0.3s ease;
-            min-height: 50px; /* Fixes screen jumping by reserving space */
-            visibility: hidden;
+            min-height: 50px;
+            display: flex;
             align-items: center;
             justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feedback.visible {
+            opacity: 1;
         }
 
         .feedback.correct {
@@ -349,12 +355,6 @@
             color: var(--feedback-incorrect-text-light);
             border: 2px solid #f56565;
         }
-        .feedback.visible {
-  visibility: visible;
-  display: flex; /* Apply flex only when visible */
-  align-items: center;
-  justify-content: center;
-}
 
         .solution-display {
             background: var(--bg-light);
@@ -448,7 +448,7 @@
                         <button class="btn btn-primary" id="downloadMistakes">📥 Download Mistakes</button>
                     </div>
 
-                    <div id="feedback"></div>
+                    <div id="feedback" class="feedback"></div>
 
                     <div class="solution-display">
                         <h4>Find the Best Move!</h4>
@@ -521,17 +521,27 @@
 
             parsePGN(pgnContent) {
                 this.puzzles = [];
-                // Split by double newlines or by [Event pattern
-                const games = pgnContent.split(/\r?\n\r?\n(?=\[)|(?=\[Event)/);
+                // Split by double newlines or by [Event pattern - improved splitting
+                const games = pgnContent.split(/\n\s*\n(?=\[Event)|\r?\n\s*\r?\n(?=\[Event)/).filter(game => game.trim());
+                
+                // Also try splitting just by [Event if the above didn't work well
+                if (games.length <= 1) {
+                    const altGames = pgnContent.split(/(?=\[Event)/).filter(game => game.trim());
+                    if (altGames.length > games.length) {
+                        games.splice(0, games.length, ...altGames);
+                    }
+                }
                 
                 for (const gameText of games) {
-                    if (!gameText.trim()) continue;
+                    if (!gameText.trim() || !gameText.includes('[Event')) continue;
                     
                     const puzzle = this.parseGame(gameText);
                     if (puzzle) {
                         this.puzzles.push(puzzle);
                     }
                 }
+
+                console.log(`Parsed ${this.puzzles.length} puzzles from PGN`);
 
                 if (this.puzzles.length > 0) {
                     this.originalPuzzles = [...this.puzzles]; // Store original order
@@ -554,37 +564,61 @@
                     headers[match[1]] = match[2];
                 }
 
-                // Extract moves after headers
-                const moveText = gameText.replace(/\[.*?\]\s*/g, '').trim();
+                // Extract moves after headers - improved parsing
+                let moveText = gameText.replace(/\[.*?\]\s*/g, '').trim();
                 
-                const cleanMoves = moveText
+                // Remove comments, variations, and results
+                moveText = moveText
                     .replace(/\{[^}]*\}/g, '') // Remove comments
                     .replace(/\([^)]*\)/g, '') // Remove variations
                     .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
+                    .replace(/\s+/g, ' ') // Normalize whitespace
                     .trim();
 
                 const moves = [];
-                // Corrected regex to handle both White and Black first moves
-                const moveRegex = /(?:\d+\.{1,3}\s*)?([^\s]+)(?:\s+([^\s]+))?/g;
-                let moveMatch;
                 
-                while ((moveMatch = moveRegex.exec(cleanMoves)) !== null) {
-                    if (moveMatch[1]) moves.push(moveMatch[1].replace(/[+#!?]+$/, ''));
-                    if (moveMatch[2]) moves.push(moveMatch[2].replace(/[+#!?]+$/, ''));
-                }
-
-                // Fallback for simple PGN notation without move numbers
-                if (moves.length === 0) {
-                    const simpleMoves = cleanMoves.split(/\s+/)
-                        .filter(move => move && !move.match(/^\d+\.+/))
-                        .map(move => move.replace(/[+#!?]+$/, ''));
+                // Handle both "1. move" and "1... move" formats
+                // More robust regex that handles black-to-move puzzles
+                const tokens = moveText.split(/\s+/);
+                
+                for (let i = 0; i < tokens.length; i++) {
+                    const token = tokens[i].trim();
+                    if (!token) continue;
                     
-                    if (simpleMoves.length > 0) {
-                        moves.push(...simpleMoves);
+                    // Skip move numbers (1., 2., 1..., 2...)
+                    if (/^\d+\.{1,3}$/.test(token)) continue;
+                    
+                    // Skip tokens that are just numbers or contain only dots
+                    if (/^[\d.]+$/.test(token)) continue;
+                    
+                    // Clean the move of annotations
+                    const cleanMove = token.replace(/[+#!?]+$/, '');
+                    
+                    // Check if it's a valid move pattern
+                    if (this.isValidMovePattern(cleanMove)) {
+                        moves.push(cleanMove);
                     }
                 }
 
-                if (moves.length === 0) return null;
+                // Additional parsing attempt for complex formats
+                if (moves.length === 0) {
+                    // Try a different approach - look for move patterns directly
+                    const movePattern = /\b([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?|O-O(?:-O)?)[+#]?\b/g;
+                    let moveMatch;
+                    while ((moveMatch = movePattern.exec(moveText)) !== null) {
+                        const cleanMove = moveMatch[1].replace(/[+#!?]+$/, '');
+                        if (this.isValidMovePattern(cleanMove)) {
+                            moves.push(cleanMove);
+                        }
+                    }
+                }
+
+                if (moves.length === 0) {
+                    console.warn('No moves found in puzzle:', gameText.substring(0, 100));
+                    return null;
+                }
+
+                console.log(`Parsed puzzle with ${moves.length} moves:`, moves);
 
                 return {
                     headers: headers,
@@ -592,6 +626,23 @@
                     solutionMoves: moves, // All moves in the solution
                     pgn: gameText
                 };
+            }
+
+            isValidMovePattern(move) {
+                // Basic validation for chess move patterns
+                if (!move || move.length < 2) return false;
+                
+                // Valid patterns: e4, Nf3, Bxe5, O-O, O-O-O, exd5, Qh4+, etc.
+                const patterns = [
+                    /^[a-h][1-8]$/, // Pawn moves like e4
+                    /^[a-h]x[a-h][1-8]$/, // Pawn captures like exd5
+                    /^[NBRQK][a-h]?[1-8]?x?[a-h][1-8]$/, // Piece moves
+                    /^O-O(-O)?$/, // Castling
+                    /^[a-h][1-8]=[NBRQ]$/, // Pawn promotion
+                    /^[a-h]x[a-h][1-8]=[NBRQ]$/ // Pawn capture with promotion
+                ];
+                
+                return patterns.some(pattern => pattern.test(move));
             }
 
             startPuzzles() {
@@ -734,293 +785,8 @@
                         this.updateSolutionDisplay();
                     }
                 } catch (e) {
-                    console.error('Error making opponent move:', e);
-                }
-            }
-
-            updateSolutionDisplay(completed = false) {
-                if (completed) {
-                    document.getElementById('solutionText').textContent = this.solutionMoves.join(' ');
-                } else if (this.currentMoveIndex < this.solutionMoves.length) {
-                    const nextMove = this.solutionMoves[this.currentMoveIndex];
-                    const progress = `(${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
-                    document.getElementById('solutionText').textContent = `${nextMove} ${progress}`;
-                } else {
-                    document.getElementById('solutionText').textContent = '?';
-                }
-            }
-
-            isCorrectMove(userMove, solutionStr) {
-                // A direct and safe comparison of SAN
-                const userMoveSan = userMove.san;
-                const solutionMoveSan = solutionStr;
-
-                // Try a direct comparison, ignoring annotations
-                if (userMoveSan.replace(/[#+?!]+$/, '') === solutionMoveSan.replace(/[#+?!]+$/, '')) {
-                    return true;
-                }
-
-                // Fallback for cases where notation might differ.
-                const tempGame = new Chess(this.game.fen());
-                tempGame.undo(); // Undo the user's move to get the correct state
-                
-                try {
-                    const solutionMove = tempGame.move(solutionStr);
-                    if (solutionMove && this.movesMatch(userMove, solutionMove)) {
-                        return true;
-                    }
-                } catch (e) {
-                    console.warn('Could not parse solution move:', solutionStr);
-                }
-
-                return false;
-            }
-
-            movesMatch(move1, move2) {
-                // Compare the essential parts of the moves
-                return move1.from === move2.from && 
-                       move1.to === move2.to &&
-                       move1.piece === move2.piece;
-            }
-
-            restartSet() {
-                if (confirm('Are you sure you want to restart the entire set? This will reset your progress.')) {
-                    this.currentPuzzleIndex = 0;
-                    this.correctCount = 0;
-                    this.mistakes = [];
-                    this.isRandomized = false;
-                    this.puzzles = [...this.originalPuzzles]; // Reset to original order
-                    this.startPuzzles();
-                }
-            }
-
-            toggleRandomize() {
-                if (this.puzzles.length === 0) return;
-                
-                if (this.isRandomized) {
-                    // Restore original order
-                    this.puzzles = [...this.originalPuzzles];
-                    this.isRandomized = false;
-                    this.showFeedback(true, '📋 Restored original order');
-                    document.getElementById('randomizePuzzles').textContent = '🎲 Randomize';
-                } else {
-                    // Randomize puzzles
-                    this.shuffleArray(this.puzzles);
-                    this.isRandomized = true;
-                    this.showFeedback(true, '🎲 Puzzles randomized!');
-                    document.getElementById('randomizePuzzles').textContent = '📋 Original Order';
-                }
-                
-                // Reset to first puzzle in new order
-                this.currentPuzzleIndex = 0;
-                this.loadPuzzle(0);
-                
-                setTimeout(() => this.clearFeedback(), 2000);
-            }
-
-            shuffleArray(array) {
-                // Fisher-Yates shuffle algorithm
-                for (let i = array.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
-                }
-            }
-
-            showHint() {
-                if (this.currentMoveIndex >= this.solutionMoves.length) return;
-                
-                const expectedMove = this.solutionMoves[this.currentMoveIndex];
-                const tempGame = new Chess(this.game.fen());
-                
-                try {
-                    tempGame.undo(); // To get the pre-user move state
-                    const move = tempGame.move(expectedMove);
-                    if (move) {
-                        const piece = move.piece.toUpperCase();
-                        const pieceNames = {
-                            'P': 'Pawn', 'N': 'Knight', 'B': 'Bishop',
-                            'R': 'Rook', 'Q': 'Queen', 'K': 'King'
-                        };
-                        const pieceName = pieceNames[piece] || 'Piece';
-                        const targetSquare = move.to;
-                        
-                        document.getElementById('hintText').textContent = 
-                            `Hint: Move the ${pieceName} to ${targetSquare} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
-                    }
-                } catch (e) {
-                    document.getElementById('hintText').textContent = 
-                        `Hint: Look for a move involving ${expectedMove.slice(0, 2)} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
-                }
-            }
-
-            resetCurrentPuzzle() {
-                this.currentMoveIndex = 0;
-                this.puzzleStartTime = Date.now(); // Reset puzzle timer
-                this.loadPuzzle(this.currentPuzzleIndex);
-            }
-
-            nextPuzzle() {
-                this.currentPuzzleIndex++;
-                if (this.currentPuzzleIndex >= this.puzzles.length) {
-                    this.showCompletion(); // Show completion when all puzzles are done
-                    return;
-                }
-                this.loadPuzzle(this.currentPuzzleIndex);
-            }
-
-            addToMistakes() {
-                const currentPuzzle = this.puzzles[this.currentPuzzleIndex];
-                // Check if this puzzle is already in mistakes based on FEN and Event
-                const alreadyInMistakes = this.mistakes.some(m => 
-                    m.headers.Event === currentPuzzle.headers.Event &&
-                    m.fen === currentPuzzle.fen
-                );
-                
-                if (!alreadyInMistakes) {
-                    this.mistakes.push(currentPuzzle);
-                    this.updateStats();
-                    this.saveState();
-                }
-            }
-
-            updatePuzzleInfo(puzzle) {
-                let displayIndex = this.currentPuzzleIndex + 1;
-                if (this.isRandomized) {
-                    const origIndex = this.originalPuzzles.findIndex(p => 
-                        p.fen === puzzle.fen && JSON.stringify(p.solutionMoves) === JSON.stringify(puzzle.solutionMoves)
-                    );
-                    if (origIndex !== -1) {
-                        displayIndex = origIndex + 1;
-                    }
-                }
-                
-                document.getElementById('currentPuzzle').textContent = displayIndex;
-                document.getElementById('totalPuzzles').textContent = this.puzzles.length;
-                document.getElementById('toMove').textContent = this.game.turn() === 'w' ? 'White' : 'Black';
-                document.getElementById('eventName').textContent = puzzle.headers.Event || `Puzzle ${displayIndex}`;
-            }
-
-            updateStats() {
-                document.getElementById('correctCount').textContent = this.correctCount;
-                document.getElementById('mistakeCount').textContent = this.mistakes.length;
-            }
-
-            showFeedback(isCorrect, message) {
-                const feedback = document.getElementById('feedback');
-                feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
-                feedback.textContent = message;
-                feedback.style.display = 'flex'; // Use flexbox for centering
-            }
-
-            clearFeedback() {
-                const feedback = document.getElementById('feedback');
-                feedback.style.display = 'none';
-            }
-
-            showCompletion() {
-                const totalSetTime = Date.now() - this.setStartTime;
-                const totalTimeSeconds = Math.round(totalSetTime / 1000);
-                const minutes = Math.floor(totalTimeSeconds / 60);
-                const seconds = totalTimeSeconds % 60;
-                const timeToCompletion = `${minutes}m ${seconds}s`;
-                
-                const averageTimeMs = this.puzzleTimes.length > 0 ? 
-                    this.puzzleTimes.reduce((a, b) => a + b, 0) / this.puzzleTimes.length : 0;
-                const avgSeconds = Math.round(averageTimeMs / 1000);
-                const avgMinutes = Math.floor(avgSeconds / 60);
-                const avgSecRemainder = avgSeconds % 60;
-                const averageTimePerPuzzle = `${avgMinutes}m ${avgSecRemainder}s`;
-                
-                const errorRate = this.originalPuzzles.length > 0 ? 
-                    ((this.mistakes.length / this.originalPuzzles.length) * 100).toFixed(1) : 0;
-                
-                document.getElementById('mainPuzzleDisplay').style.display = 'none';
-                const endOfSetStats = document.getElementById('endOfSetStats');
-                endOfSetStats.style.display = 'block';
-
-                endOfSetStats.innerHTML = `
-                    <div class="feedback correct" style="display: flex; flex-direction: column;">
-                        <h3>🏆 Set Completed! 🏆</h3>
-                        <div style="text-align: left; margin-top: 15px;">
-                            <p><strong>📊 Final Statistics:</strong></p>
-                            <p>• <strong>Number of Errors:</strong> ${this.mistakes.length}</p>
-                            <p>• <strong>Error Rate:</strong> ${errorRate}%</p>
-                            <p>• <strong>Total Time:</strong> ${timeToCompletion}</p>
-                            <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
-                        </div>
-                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="location.reload()">Start Over</button>
-                    </div>
-                `;
-            }
-
-            downloadMistakes() {
-                if (this.mistakes.length === 0) {
-                    alert('No mistakes to download.');
-                    return;
-                }
-                
-                let pgnContent = '';
-                this.mistakes.forEach(puzzle => {
-                    pgnContent += puzzle.pgn + '\n\n';
-                });
-                
-                const blob = new Blob([pgnContent], { type: 'text/plain;charset=utf-8' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = 'chess_puzzles_mistakes.pgn';
-                link.click();
-            }
-
-            toggleDarkMode() {
-                this.isDarkMode = !this.isDarkMode;
-                const body = document.body;
-                const button = document.getElementById('toggleDarkMode');
-                
-                if (this.isDarkMode) {
-                    body.classList.add('dark-mode');
-                    button.textContent = '☀️ Light Mode';
-                } else {
-                    body.classList.remove('dark-mode');
-                    button.textContent = '🌙 Dark Mode';
-                }
-            }
-
-            saveState() {
-                const state = {
-                    mistakes: this.mistakes,
-                    correctCount: this.correctCount,
-                    currentPuzzleIndex: this.currentPuzzleIndex,
-                    setStartTime: this.setStartTime,
-                    totalPuzzleTime: this.totalPuzzleTime,
-                    puzzleTimes: this.puzzleTimes
-                };
-                // Note: Using in-memory storage only as localStorage is not supported in artifacts
-                this.savedState = state;
-            }
-
-            loadState() {
-                // Note: In a real environment, this would use localStorage
-                // For now, we'll just initialize with default values
-                if (this.savedState) {
+                    console.error('Error making opponent move:', e, 'Move:', expectedMove);
+                    // Try alternative parsing
                     try {
-                        const state = this.savedState;
-                        this.mistakes = state.mistakes || [];
-                        this.correctCount = state.correctCount || 0;
-                        this.setStartTime = state.setStartTime || Date.now();
-                        this.totalPuzzleTime = state.totalPuzzleTime || 0;
-                        this.puzzleTimes = state.puzzleTimes || [];
-                        this.updateStats();
-                    } catch (e) {
-                        console.error('Error loading saved state:', e);
-                    }
-                }
-            }
-        }
-
-        // Initialize the app when DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            new ChessPuzzleTrainer();
-        });
-    </script>
-</body>
-</html>
+                        const altMove = this.game.move(expectedMove, {sloppy: true});
+                        if

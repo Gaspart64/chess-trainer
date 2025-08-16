@@ -36,6 +36,10 @@
             --feedback-incorrect-bg-dark: #c53030;
             --feedback-incorrect-text-light: #742a2a;
             --feedback-incorrect-text-dark: #fed7d7;
+            --progress-bg-light: #e0e0e0;
+            --progress-bg-dark: #4a5568;
+            --progress-bar-light: #48bb78;
+            --progress-bar-dark: #68d391;
         }
 
         .dark-mode {
@@ -54,7 +58,7 @@
             background-clip: text;
         }
 
-        .dark-mode h2, .dark-mode h3, .dark-mode p {
+        .dark-mode h2, .dark-mode h3, .dark-mode p, .dark-mode label {
             color: var(--text-dark) !important;
         }
 
@@ -101,6 +105,13 @@
             background: var(--feedback-incorrect-bg-dark);
             color: var(--feedback-incorrect-text-dark);
             border-color: var(--feedback-incorrect-bg-dark);
+        }
+
+        .dark-mode #progressContainer {
+            background: var(--progress-bg-dark);
+        }
+        .dark-mode #progressBar {
+            background: var(--progress-bar-dark);
         }
 
         * {
@@ -155,41 +166,57 @@
             margin-bottom: 30px;
             border: 2px dashed var(--border-light);
             transition: all 0.3s ease;
+            text-align: center;
         }
 
         .upload-section:hover {
             border-color: var(--primary-btn-bg);
             background: #f0f4ff;
         }
-
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
+        
+        #fileLoader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        #pgnFileInput, #pgnFileSelect {
+            width: 80%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+            background-color: var(--stat-box-bg-light);
+            color: var(--text-light);
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
         }
 
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 15px 30px;
-            background: var(--primary-bg);
-            color: var(--primary-btn-text);
-            border-radius: 10px;
+        #pgnFileInput {
+            background-color: transparent;
+            border: none;
             cursor: pointer;
             text-align: center;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .upload-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #667eea;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
         }
 
-        .file-input-label:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        .upload-label:hover {
+            background-color: #764ba2;
+        }
+
+        .dark-mode #pgnFileInput, .dark-mode #pgnFileSelect {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
         }
 
         .puzzle-area {
@@ -332,7 +359,7 @@
             text-align: center;
             font-weight: 600;
             animation: fadeIn 0.3s ease;
-            min-height: 50px; /* Fixes screen jumping by reserving space */
+            min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -380,6 +407,24 @@
             transition: color 0.5s ease;
         }
 
+        #progressContainer {
+            width: 100%;
+            height: 15px;
+            background-color: var(--progress-bg-light);
+            border-radius: 8px;
+            margin-top: 20px;
+            overflow: hidden;
+            transition: background-color 0.5s ease;
+        }
+
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background-color: var(--progress-bar-light);
+            border-radius: 8px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
         @media (max-width: 768px) {
             .board-container {
                 flex-direction: column;
@@ -400,13 +445,19 @@
         <h1>♔ Chess Puzzle Trainer ♚</h1>
         
         <div class="upload-section" id="uploadSection">
-            <h2 style="color: #4a5568; margin-bottom: 15px;">Upload PGN File</h2>
-            <p style="color: #718096; margin-bottom: 20px;">Select a PGN file containing chess puzzles to begin training</p>
-            <div class="file-input-wrapper">
-                <input type="file" id="pgnFile" accept=".pgn">
-                <label for="pgnFile" class="file-input-label">
-                    📁 Choose PGN File
-                </label>
+            <h2 style="color: #4a5568; margin-bottom: 15px;">Load Puzzle Set</h2>
+            <div id="fileLoader">
+                <p style="color: #718096; margin-bottom: 10px;">Select from a pre-loaded PGN file:</p>
+                <select id="pgnFileSelect">
+                    <option value="1.pgn">Easy Puzzles (1.pgn)</option>
+                    <option value="2.pgn">Medium Puzzles (2.pgn)</option>
+                    <option value="3.pgn">Hard Puzzles (3.pgn)</option>
+                    <option value="4.pgn">Mixed Puzzles (4.pgn)</option>
+                </select>
+                <p style="color: #718096; margin-top: 20px; margin-bottom: 10px;">Or upload your own:</p>
+                <label class="upload-label" for="pgnFileInput">Choose File</label>
+                <input type="file" id="pgnFileInput" accept=".pgn" style="display: none;">
+                <button class="btn btn-primary" id="loadPgnBtn">Load Puzzles</button>
             </div>
         </div>
 
@@ -416,7 +467,7 @@
                 <div class="info-panel">
                     <div class="puzzle-info">
                         <h3>Puzzle Progress</h3>
-                        <p><strong>Current:</strong> <span id="currentPuzzle">1</span> / <span id="totalPuzzles">0</span></p>
+                        <p><strong>Current:</strong> <span id="currentPuzzle">0</span> / <span id="totalPuzzles">0</span></p>
                         <p><strong>To Move:</strong> <span id="toMove">White</span></p>
                         <p><strong>Event:</strong> <span id="eventName">-</span></p>
                         
@@ -430,6 +481,10 @@
                                 <div class="label">Mistakes</div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div id="progressContainer">
+                        <div id="progressBar"></div>
                     </div>
 
                     <div class="controls">
@@ -462,36 +517,37 @@
         class ChessPuzzleTrainer {
             constructor() {
                 this.puzzles = [];
-                this.originalPuzzles = []; // Keep original order
+                this.originalPuzzles = [];
                 this.currentPuzzleIndex = 0;
                 this.mistakes = [];
                 this.correctCount = 0;
                 this.board = null;
                 this.game = null;
                 this.currentSolution = null;
-                this.solutionMoves = []; // Array of moves for multi-move puzzles
-                this.currentMoveIndex = 0; // Track which move in solution we're on
+                this.solutionMoves = [];
+                this.currentMoveIndex = 0;
                 this.initialPosition = null;
                 this.showingHint = false;
                 this.isRandomized = false;
-                
-                // Timing variables for new features
                 this.setStartTime = null;
                 this.puzzleStartTime = null;
                 this.totalPuzzleTime = 0;
-                this.puzzleTimes = []; // Array to store individual puzzle times
-                
-                // Note: Using in-memory storage only as localStorage is not supported in artifacts
-                // For a real-world application, you would use localStorage
+                this.puzzleTimes = [];
                 this.savedState = {};
                 this.isDarkMode = false;
+                this.pgnFiles = {
+                    '1.pgn': '[Event "Easy Puzzle 1"]\n[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"]\n[White "player"]\n[Black "opponent"]\n\n1. e4\n\n[Event "Easy Puzzle 2"]\n[FEN "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"]\n[White "player"]\n[Black "opponent"]\n\n1. e4\n\n[Event "Easy Puzzle 3"]\n[FEN "8/5p1p/4k1p1/1R2P3/6P1/4K2P/8/8 w - - 0 49"]\n[White "player"]\n[Black "opponent"]\n\n1. g5\n\n[Event "Easy Puzzle 4"]\n[FEN "r2qkb1r/ppp1nppp/3p1n2/3Pp3/2B1P3/5N2/PPP2PPP/RNBQK2R w KQkq - 1 7"]\n[White "player"]\n[Black "opponent"]\n\n1. O-O\n\n[Event "Easy Puzzle 5"]\n[FEN "r2q1rk1/1pp2ppp/2p5/p3p3/4P3/2P5/PP1P1PPP/R1BQR1K1 w - - 0 13"]\n[White "player"]\n[Black "opponent"]\n\n1. d3\n',
+                    '2.pgn': '[Event "Medium Puzzle 1"]\n[FEN "8/p5pk/1p5p/8/P1P5/2p5/1p6/1K2R2B w - - 0 40"]\n[White "player"]\n[Black "opponent"]\n\n1. Re8\n\n[Event "Medium Puzzle 2"]\n[FEN "r3kr2/p1pbqppp/2p5/8/4P3/4N3/PPPQ1PPP/R3K2R w KQq - 2 13"]\n[White "player"]\n[Black "opponent"]\n\n1. c4\n\n[Event "Medium Puzzle 3"]\n[FEN "2rq1rk1/pp1b1p1p/4p1p1/3p4/3Qn3/1BP5/PP2NPPP/3R1RK1 w - - 0 18"]\n[White "player"]\n[Black "opponent"]\n\n1. Qe5\n\n[Event "Medium Puzzle 4"]\n[FEN "8/4p2p/3p1rp1/p1pP1p2/1pP2R2/1P5P/PkP3P1/6K1 w - - 2 34"]\n[White "player"]\n[Black "opponent"]\n\n1. Re4\n\n[Event "Medium Puzzle 5"]\n[FEN "r4rk1/pb2bppp/1p2p3/2p1q3/2P1N3/1P1P4/P2QRPPP/R5K1 w - - 0 19"]\n[White "player"]\n[Black "opponent"]\n\n1. Rae1\n',
+                    '3.pgn': '[Event "Hard Puzzle 1"]\n[FEN "8/5B2/6pk/P7/1p2p3/4P3/1P2qP2/K2R4 w - - 2 48"]\n[White "player"]\n[Black "opponent"]\n\n1. Rd4\n\n[Event "Hard Puzzle 2"]\n[FEN "r3b1rk/p3qp1p/4p2Q/3pP3/3P4/P1N5/1P3PPP/4RRK1 w - - 1 23"]\n[White "player"]\n[Black "opponent"]\n\n1. Re3\n\n[Event "Hard Puzzle 3"]\n[FEN "1r2R1k1/3R1p1p/3p4/3P2p1/4P1P1/q6P/5P2/6K1 w - - 0 35"]\n[White "player"]\n[Black "opponent"]\n\n1. Rxd6\n\n[Event "Hard Puzzle 4"]\n[FEN "r4rk1/5p2/p3p2p/2R2p2/1PpP2q1/P3P1b1/2R2P1P/3Q2K1 w - - 0 31"]\n[White "player"]\n[Black "opponent"]\n\n1. fxg3\n\n[Event "Hard Puzzle 5"]\n[FEN "2k3r1/pppb3p/1b4r1/3p4/P2N4/2PR4/1P1B1PP1/R4K2 w - - 0 29"]\n[White "player"]\n[Black "opponent"]\n\n1. b4\n',
+                    '4.pgn': '[Event "Mixed Puzzle 1"]\n[FEN "r1bqkb1r/ppp1nppp/2n5/1B6/3p4/5N2/PPP2PPP/RNBQR1K1 w kq - 2 9"]\n[White "player"]\n[Black "opponent"]\n\n1. O-O\n\n[Event "Mixed Puzzle 2"]\n[FEN "8/pp4pp/2p1kp2/2p5/P3P3/1P3PPP/2P1K3/8 w - - 0 32"]\n[White "player"]\n[Black "opponent"]\n\n1. Kd3\n\n[Event "Mixed Puzzle 3"]\n[FEN "r3kr2/p1pbqppp/2p5/8/4P3/4N3/PPPQ1PPP/R3K2R w KQq - 2 13"]\n[White "player"]\n[Black "opponent"]\n\n1. c4\n\n[Event "Mixed Puzzle 4"]\n[FEN "8/5B2/6pk/P7/1p2p3/4P3/1P2qP2/K2R4 w - - 2 48"]\n[White "player"]\n[Black "opponent"]\n\n1. Rd4\n\n[Event "Mixed Puzzle 5"]\n[FEN "r4r1k/1b1q3p/p2p1p2/1p2p3/2p1P3/2N1Q3/PPP2PPP/R4RK1 w - - 0 20"]\n[White "player"]\n[Black "opponent"]\n\n1. Rad1\n'
+                };
 
                 this.initializeEventListeners();
                 this.loadState();
             }
 
             initializeEventListeners() {
-                document.getElementById('pgnFile').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('loadPgnBtn').addEventListener('click', () => this.loadPuzzles());
                 document.getElementById('restartSet').addEventListener('click', () => this.restartSet());
                 document.getElementById('resetPuzzle').addEventListener('click', () => this.resetCurrentPuzzle());
                 document.getElementById('skipPuzzle').addEventListener('click', () => this.nextPuzzle());
@@ -501,26 +557,36 @@
                 document.getElementById('toggleDarkMode').addEventListener('click', () => this.toggleDarkMode());
             }
 
-            handleFileUpload(event) {
-                const file = event.target.files[0];
-                if (!file) return;
+            loadPuzzles() {
+                const fileInput = document.getElementById('pgnFileInput');
+                const fileSelect = document.getElementById('pgnFileSelect');
+                let pgnContent;
 
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const pgnContent = e.target.result;
-                    this.parsePGN(pgnContent);
-                };
-                reader.readAsText(file);
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.parsePGN(e.target.result);
+                    };
+                    reader.readAsText(file);
+                } else if (fileSelect.value) {
+                    pgnContent = this.pgnFiles[fileSelect.value];
+                    if (pgnContent) {
+                        this.parsePGN(pgnContent);
+                    } else {
+                        alert('Error: Could not find PGN content for this file.');
+                    }
+                } else {
+                    alert('Please select a file or choose one from the dropdown menu.');
+                }
             }
-
+            
             parsePGN(pgnContent) {
                 this.puzzles = [];
-                // Split by double newlines or by [Event pattern
                 const games = pgnContent.split(/\r?\n\r?\n(?=\[)|(?=\[Event)/);
                 
                 for (const gameText of games) {
                     if (!gameText.trim()) continue;
-                    
                     const puzzle = this.parseGame(gameText);
                     if (puzzle) {
                         this.puzzles.push(puzzle);
@@ -528,14 +594,14 @@
                 }
 
                 if (this.puzzles.length > 0) {
-                    this.originalPuzzles = [...this.puzzles]; // Store original order
+                    this.originalPuzzles = [...this.puzzles];
                     this.currentPuzzleIndex = 0;
                     this.correctCount = 0;
                     this.mistakes = [];
                     this.isRandomized = false;
                     this.startPuzzles();
                 } else {
-                    alert('No valid puzzles found in the PGN file');
+                    alert('No valid puzzles found in the PGN file.');
                 }
             }
 
@@ -547,18 +613,14 @@
                 while ((match = headerRegex.exec(gameText)) !== null) {
                     headers[match[1]] = match[2];
                 }
-
-                // Extract moves after headers
                 const moveText = gameText.replace(/\[.*?\]\s*/g, '').trim();
-                
                 const cleanMoves = moveText
-                    .replace(/\{[^}]*\}/g, '') // Remove comments
-                    .replace(/\([^)]*\)/g, '') // Remove variations
-                    .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
+                    .replace(/\{[^}]*\}/g, '')
+                    .replace(/\([^)]*\)/g, '')
+                    .replace(/1-0|0-1|1\/2-1\/2|\*/g, '')
                     .trim();
 
                 const moves = [];
-                // Corrected regex to handle both White and Black first moves
                 const moveRegex = /(?:\d+\.{1,3}\s*)?([^\s]+)(?:\s+([^\s]+))?/g;
                 let moveMatch;
                 
@@ -566,24 +628,20 @@
                     if (moveMatch[1]) moves.push(moveMatch[1].replace(/[+#!?]+$/, ''));
                     if (moveMatch[2]) moves.push(moveMatch[2].replace(/[+#!?]+$/, ''));
                 }
-
-                // Fallback for simple PGN notation without move numbers
                 if (moves.length === 0) {
                     const simpleMoves = cleanMoves.split(/\s+/)
                         .filter(move => move && !move.match(/^\d+\.+/))
                         .map(move => move.replace(/[+#!?]+$/, ''));
-                    
                     if (simpleMoves.length > 0) {
                         moves.push(...simpleMoves);
                     }
                 }
-
                 if (moves.length === 0) return null;
 
                 return {
                     headers: headers,
                     fen: headers.FEN || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-                    solutionMoves: moves, // All moves in the solution
+                    solutionMoves: moves,
                     pgn: gameText
                 };
             }
@@ -594,7 +652,6 @@
                 document.getElementById('mainPuzzleDisplay').style.display = 'flex';
                 document.getElementById('endOfSetStats').style.display = 'none';
                 
-                // Initialize timing
                 this.setStartTime = Date.now();
                 this.totalPuzzleTime = 0;
                 this.puzzleTimes = [];
@@ -629,7 +686,6 @@
                 this.game = new Chess(puzzle.fen);
                 this.board.position(this.game.fen());
                 
-                // Determine board orientation based on who moves
                 const orientation = this.game.turn() === 'w' ? 'white' : 'black';
                 this.board.orientation(orientation);
                 
@@ -638,7 +694,6 @@
                 this.initialPosition = puzzle.fen;
                 this.showingHint = false;
                 
-                // Start timing for this puzzle
                 this.puzzleStartTime = Date.now();
 
                 this.updatePuzzleInfo(puzzle);
@@ -650,36 +705,29 @@
             onDragStart(source, piece, position, orientation) {
                 if (this.game.game_over()) return false;
                 
-                // Only allow moves for the side to move
                 const turn = this.game.turn();
                 if ((turn === 'w' && piece.search(/^b/) !== -1) ||
                     (turn === 'b' && piece.search(/^w/) !== -1)) {
                     return false;
                 }
-                
                 return true;
             }
 
             onDrop(source, target) {
-                // Try the move
                 const move = this.game.move({
                     from: source,
                     to: target,
-                    promotion: 'q' // Always promote to queen for simplicity
+                    promotion: 'q'
                 });
 
                 if (move === null) return 'snapback';
 
-                // Check if this move matches the current expected move in the solution
                 const expectedMoveStr = this.solutionMoves[this.currentMoveIndex];
                 
                 if (this.isCorrectMove(move, expectedMoveStr)) {
-                    // Correct move!
                     this.currentMoveIndex++;
                     
-                    // Check if we've completed all moves in the solution
                     if (this.currentMoveIndex >= this.solutionMoves.length) {
-                        // Puzzle solved completely!
                         const puzzleTime = Date.now() - this.puzzleStartTime;
                         this.puzzleTimes.push(puzzleTime);
                         this.totalPuzzleTime += puzzleTime;
@@ -691,11 +739,9 @@
                         this.saveState();
                         setTimeout(() => this.nextPuzzle(), 2000);
                     } else {
-                        // Continue to next move in solution
                         this.showFeedback(true, `✅ Good! Continue...`);
                         this.updateSolutionDisplay();
                         
-                        // If it's opponent's move, make it automatically after a short delay
                         if (this.currentMoveIndex < this.solutionMoves.length) {
                             setTimeout(() => {
                                 this.makeOpponentMove();
@@ -703,8 +749,7 @@
                         }
                     }
                 } else {
-                    // Wrong move
-                    this.game.undo(); // Undo the move
+                    this.game.undo();
                     this.showFeedback(false, '❌ Incorrect! Try again.');
                     this.addToMistakes();
                     setTimeout(() => {
@@ -745,19 +790,14 @@
             }
 
             isCorrectMove(userMove, solutionStr) {
-                // A direct and safe comparison of SAN
                 const userMoveSan = userMove.san;
                 const solutionMoveSan = solutionStr;
-
-                // Try a direct comparison, ignoring annotations
                 if (userMoveSan.replace(/[#+?!]+$/, '') === solutionMoveSan.replace(/[#+?!]+$/, '')) {
                     return true;
                 }
 
-                // Fallback for cases where notation might differ.
                 const tempGame = new Chess(this.game.fen());
-                tempGame.undo(); // Undo the user's move to get the correct state
-                
+                tempGame.undo();
                 try {
                     const solutionMove = tempGame.move(solutionStr);
                     if (solutionMove && this.movesMatch(userMove, solutionMove)) {
@@ -766,12 +806,10 @@
                 } catch (e) {
                     console.warn('Could not parse solution move:', solutionStr);
                 }
-
                 return false;
             }
 
             movesMatch(move1, move2) {
-                // Compare the essential parts of the moves
                 return move1.from === move2.from && 
                        move1.to === move2.to &&
                        move1.piece === move2.piece;
@@ -783,7 +821,7 @@
                     this.correctCount = 0;
                     this.mistakes = [];
                     this.isRandomized = false;
-                    this.puzzles = [...this.originalPuzzles]; // Reset to original order
+                    this.puzzles = [...this.originalPuzzles];
                     this.startPuzzles();
                 }
             }
@@ -792,20 +830,16 @@
                 if (this.puzzles.length === 0) return;
                 
                 if (this.isRandomized) {
-                    // Restore original order
                     this.puzzles = [...this.originalPuzzles];
                     this.isRandomized = false;
                     this.showFeedback(true, '📋 Restored original order');
                     document.getElementById('randomizePuzzles').textContent = '🎲 Randomize';
                 } else {
-                    // Randomize puzzles
                     this.shuffleArray(this.puzzles);
                     this.isRandomized = true;
                     this.showFeedback(true, '🎲 Puzzles randomized!');
                     document.getElementById('randomizePuzzles').textContent = '📋 Original Order';
                 }
-                
-                // Reset to first puzzle in new order
                 this.currentPuzzleIndex = 0;
                 this.loadPuzzle(0);
                 
@@ -813,7 +847,6 @@
             }
 
             shuffleArray(array) {
-                // Fisher-Yates shuffle algorithm
                 for (let i = array.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [array[i], array[j]] = [array[j], array[i]];
@@ -827,7 +860,7 @@
                 const tempGame = new Chess(this.game.fen());
                 
                 try {
-                    tempGame.undo(); // To get the pre-user move state
+                    tempGame.undo();
                     const move = tempGame.move(expectedMove);
                     if (move) {
                         const piece = move.piece.toUpperCase();
@@ -849,14 +882,14 @@
 
             resetCurrentPuzzle() {
                 this.currentMoveIndex = 0;
-                this.puzzleStartTime = Date.now(); // Reset puzzle timer
+                this.puzzleStartTime = Date.now();
                 this.loadPuzzle(this.currentPuzzleIndex);
             }
 
             nextPuzzle() {
                 this.currentPuzzleIndex++;
                 if (this.currentPuzzleIndex >= this.puzzles.length) {
-                    this.showCompletion(); // Show completion when all puzzles are done
+                    this.showCompletion();
                     return;
                 }
                 this.loadPuzzle(this.currentPuzzleIndex);
@@ -864,7 +897,6 @@
 
             addToMistakes() {
                 const currentPuzzle = this.puzzles[this.currentPuzzleIndex];
-                // Check if this puzzle is already in mistakes based on FEN and Event
                 const alreadyInMistakes = this.mistakes.some(m => 
                     m.headers.Event === currentPuzzle.headers.Event &&
                     m.fen === currentPuzzle.fen
@@ -892,6 +924,9 @@
                 document.getElementById('totalPuzzles').textContent = this.puzzles.length;
                 document.getElementById('toMove').textContent = this.game.turn() === 'w' ? 'White' : 'Black';
                 document.getElementById('eventName').textContent = puzzle.headers.Event || `Puzzle ${displayIndex}`;
+                
+                const progressPercentage = (this.currentPuzzleIndex / this.puzzles.length) * 100;
+                document.getElementById('progressBar').style.width = `${progressPercentage}%`;
             }
 
             updateStats() {
@@ -903,7 +938,7 @@
                 const feedback = document.getElementById('feedback');
                 feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
                 feedback.textContent = message;
-                feedback.style.display = 'flex'; // Use flexbox for centering
+                feedback.style.display = 'flex';
             }
 
             clearFeedback() {
@@ -988,13 +1023,10 @@
                     totalPuzzleTime: this.totalPuzzleTime,
                     puzzleTimes: this.puzzleTimes
                 };
-                // Note: Using in-memory storage only as localStorage is not supported in artifacts
                 this.savedState = state;
             }
 
             loadState() {
-                // Note: In a real environment, this would use localStorage
-                // For now, we'll just initialize with default values
                 if (this.savedState) {
                     try {
                         const state = this.savedState;
@@ -1011,7 +1043,6 @@
             }
         }
 
-        // Initialize the app when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             new ChessPuzzleTrainer();
         });

@@ -465,16 +465,25 @@
             <div id="fileLoader">
                 <p style="color: #718096; margin-bottom: 10px;">Select from a pre-loaded PGN file:</p>
                 <!-- Dropdown to select a PGN file -->
-                <select id="openPGN">
+              <select id="openPGN" onchange="loadPGNFile()">
+
                     <option value="">Select a PGN file...</option>
+
                     <option value="./PGN/1.pgn">Set 1</option>
+
                     <option value="./PGN/2.pgn">Set 2</option>
+
                     <option value="./PGN/3.pgn">Set 3</option>
+
                     <option value="./PGN/4.pgn">Set 4</option>
+
                     <option value="./PGN/5.pgn">Set 5</option>
+
                 </select>
+
                 <p style="color: #718096; margin-top: 20px; margin-bottom: 10px;">Or upload your own:</p>
-                <label class="upload-label" for="pgnFileInput">📁 Choose File</label>
+
+                <label class="upload-label" for="pgnFileInput">Choose File</label>
                 <input type="file" id="pgnFileInput" accept=".pgn" style="display: none;">
             </div>
         </div>

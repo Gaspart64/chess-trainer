@@ -2,51 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess Puzzle Trainer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chess Puzzles">
+    <title>Chess Puzzle Trainer - Mobile</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <style>
         :root {
             --bg-light: #f7f9fc;
-            --bg-dark: #2d3748;
+            --bg-dark: #000000;
             --text-light: #4a5568;
-            --text-dark: #cbd5e0;
+            --text-dark: #ffffff;
             --primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --primary-btn-bg: #667eea;
             --primary-btn-text: white;
             --secondary-btn-bg-light: #e2e8f0;
-            --secondary-btn-bg-dark: #4a5568;
+            --secondary-btn-bg-dark: #1c1c1e;
             --secondary-btn-text-light: #4a5568;
-            --secondary-btn-text-dark: #e2e8f0;
+            --secondary-btn-text-dark: #ffffff;
             --container-bg-light: white;
-            --container-bg-dark: #1a202c;
-            --container-shadow-light: 0 20px 60px rgba(0, 0, 0, 0.3);
-            --container-shadow-dark: 0 20px 60px rgba(0, 0, 0, 0.5);
+            --container-bg-dark: #1c1c1e;
             --border-light: #cbd5e0;
-            --border-dark: #4a5568;
+            --border-dark: #38383a;
             --stat-box-bg-light: white;
-            --stat-box-bg-dark: #2d3748;
+            --stat-box-bg-dark: #2c2c2e;
             --stat-box-border-light: #e2e8f0;
-            --stat-box-border-dark: #4a5568;
-            --feedback-correct-bg-light: #c6f6d5;
-            --feedback-correct-bg-dark: #2f855a;
-            --feedback-correct-text-light: #22543d;
-            --feedback-correct-text-dark: #c6f6d5;
-            --feedback-incorrect-bg-light: #fed7d7;
-            --feedback-incorrect-bg-dark: #c53030;
-            --feedback-incorrect-text-light: #742a2a;
-            --feedback-incorrect-text-dark: #fed7d7;
+            --stat-box-border-dark: #38383a;
+            --feedback-correct-bg-light: #34d399;
+            --feedback-correct-bg-dark: #10b981;
+            --feedback-correct-text-light: white;
+            --feedback-correct-text-dark: white;
+            --feedback-incorrect-bg-light: #f87171;
+            --feedback-incorrect-bg-dark: #ef4444;
+            --feedback-incorrect-text-light: white;
+            --feedback-incorrect-text-dark: white;
+            
+            /* Safe area insets for iPhone */
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-left: env(safe-area-inset-left, 0px);
+            --safe-area-right: env(safe-area-inset-right, 0px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-light);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
+            transition: background 0.3s ease;
+            overflow-x: hidden;
         }
 
         .dark-mode {
-            background: #1a202c !important;
+            background: var(--bg-dark) !important;
         }
-        
+
         .dark-mode .container {
             background: var(--container-bg-dark);
-            box-shadow: var(--container-shadow-dark);
+            border: 1px solid var(--border-dark);
         }
-        
+
         .dark-mode h1 {
             background: var(--primary-bg);
             -webkit-background-clip: text;
@@ -61,145 +88,96 @@
         .dark-mode .upload-section,
         .dark-mode .puzzle-info,
         .dark-mode .solution-display {
-            background: var(--bg-dark);
+            background: var(--stat-box-bg-dark);
             border-color: var(--border-dark);
         }
 
         .dark-mode .stat-box {
             background: var(--stat-box-bg-dark);
-            border-color: var(--stat-box-border-dark);
-        }
-        
-        .dark-mode .stat-box .value {
-            color: var(--primary-btn-bg);
+            border-color: var(--border-dark);
         }
 
-        .dark-mode .stat-box .label {
+        .dark-mode select {
+            background: var(--stat-box-bg-dark);
             color: var(--text-dark);
+            border-color: var(--border-dark);
         }
 
         .dark-mode .btn-secondary {
             background: var(--secondary-btn-bg-dark);
             color: var(--secondary-btn-text-dark);
-        }
-
-        .dark-mode .solution-text {
-            color: var(--text-dark);
-        }
-        
-        .dark-mode .hint-text {
-            color: var(--text-dark);
-        }
-
-        .dark-mode .feedback.correct {
-            background: var(--feedback-correct-bg-dark);
-            color: var(--feedback-correct-text-dark);
-            border-color: var(--feedback-correct-bg-dark);
-        }
-        
-        .dark-mode .feedback.incorrect {
-            background: var(--feedback-incorrect-bg-dark);
-            color: var(--feedback-incorrect-text-dark);
-            border-color: var(--feedback-incorrect-bg-dark);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--primary-bg);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            transition: background 0.5s ease;
+            border: 1px solid var(--border-dark);
         }
 
         .container {
             background: var(--container-bg-light);
-            border-radius: 20px;
-            box-shadow: var(--container-shadow-light);
-            max-width: 900px;
+            max-width: 100vw;
             width: 100%;
-            padding: 30px;
-            animation: fadeIn 0.5s ease;
-            transition: background 0.5s ease, box-shadow 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            padding: 15px;
+            transition: background 0.3s ease;
         }
 
         h1 {
             text-align: center;
             color: #333;
-            margin-bottom: 30px;
-            font-size: 2.5em;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            font-weight: 700;
             background: var(--primary-bg);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            transition: color 0.5s ease;
         }
 
         .upload-section {
-            background: var(--bg-light);
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            border: 2px dashed var(--border-light);
-            transition: all 0.3s ease;
+            background: var(--container-bg-light);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 2px solid var(--border-light);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .upload-section:hover {
-            border-color: var(--primary-btn-bg);
-            background: #f0f4ff;
+        #fileLoader {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
+        select {
+            padding: 16px 12px;
+            border: 2px solid var(--border-light);
+            border-radius: 10px;
+            font-size: 16px;
+            background: var(--container-bg-light);
+            color: var(--text-light);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
         }
 
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
+        .upload-label {
             display: block;
-            padding: 15px 30px;
+            padding: 16px 24px;
             background: var(--primary-bg);
             color: var(--primary-btn-text);
             border-radius: 10px;
-            cursor: pointer;
             text-align: center;
-            font-size: 1.1em;
+            font-size: 16px;
             font-weight: 600;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .file-input-label:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        .upload-label:active {
+            transform: scale(0.98);
         }
 
         .puzzle-area {
             display: none;
-            animation: slideIn 0.5s ease;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
         }
 
         .puzzle-area.active {
@@ -208,135 +186,130 @@
 
         .board-container {
             display: flex;
-            gap: 30px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
         }
 
         #board {
-            width: 500px;
-            max-width: 100%;
+            width: 100%;
+            max-width: min(100vw - 30px, 400px);
+            margin: 0 auto;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .info-panel {
-            flex: 1;
-            min-width: 250px;
+            width: 100%;
         }
 
         .puzzle-info {
-            background: var(--bg-light);
-            padding: 20px;
+            background: var(--container-bg-light);
+            padding: 16px;
             border-radius: 10px;
-            margin-bottom: 20px;
-            transition: background 0.5s ease;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .puzzle-info h3 {
             color: var(--text-light);
-            margin-bottom: 15px;
-            font-size: 1.2em;
-            transition: color 0.5s ease;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
         }
 
         .puzzle-info p {
             color: var(--text-light);
-            margin-bottom: 10px;
-            font-size: 0.95em;
-            transition: color 0.5s ease;
+            margin-bottom: 8px;
+            font-size: 0.9em;
         }
 
         .stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 12px;
         }
 
         .stat-box {
             background: var(--stat-box-bg-light);
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
             text-align: center;
             border: 1px solid var(--stat-box-border-light);
-            transition: background 0.5s ease, border-color 0.5s ease;
         }
 
         .stat-box .value {
-            font-size: 1.5em;
-            font-weight: bold;
+            font-size: 1.4em;
+            font-weight: 700;
             color: var(--primary-btn-bg);
-            transition: color 0.5s ease;
         }
 
         .stat-box .label {
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: var(--text-light);
-            margin-top: 5px;
-            transition: color 0.5s ease;
+            margin-top: 4px;
         }
 
         .controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .controls-row-3 {
+            grid-template-columns: 1fr 1fr 1fr;
         }
 
         .btn {
-            flex: 1;
-            padding: 12px 20px;
+            padding: 14px 12px;
             border: none;
             border-radius: 8px;
-            font-size: 1em;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 120px;
+            transition: all 0.2s ease;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
         }
 
         .btn-primary {
             background: var(--primary-bg);
             color: var(--primary-btn-text);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .btn-secondary {
             background: var(--secondary-btn-bg-light);
             color: var(--secondary-btn-text-light);
-            transition: background 0.5s ease, color 0.5s ease;
+            border: 1px solid var(--border-light);
         }
 
-        .btn-secondary:hover {
-            background: #cbd5e0;
-        }
-
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #f56565;
-            color: white;
+        .btn-full-width {
+            grid-column: 1 / -1;
         }
 
         .feedback {
-            padding: 15px;
+            padding: 16px;
             border-radius: 10px;
-            margin-top: 20px;
+            margin-top: 15px;
             text-align: center;
             font-weight: 600;
-            min-height: 50px;
+            min-height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
+            font-size: 15px;
         }
 
         .feedback.visible {
@@ -346,72 +319,173 @@
         .feedback.correct {
             background: var(--feedback-correct-bg-light);
             color: var(--feedback-correct-text-light);
-            border: 2px solid #48bb78;
         }
 
         .feedback.incorrect {
             background: var(--feedback-incorrect-bg-light);
             color: var(--feedback-incorrect-text-light);
-            border: 2px solid #f56565;
         }
 
         .solution-display {
-            background: var(--bg-light);
-            padding: 15px;
+            background: var(--container-bg-light);
+            padding: 16px;
             border-radius: 10px;
-            margin-top: 20px;
-            transition: background 0.5s ease;
+            margin-top: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .solution-display h4 {
             color: var(--text-light);
-            margin-bottom: 10px;
-            transition: color 0.5s ease;
+            margin-bottom: 8px;
+            font-size: 1em;
+            font-weight: 600;
         }
 
         .solution-text {
-            font-family: 'Courier New', monospace;
-            color: #2d3748;
-            font-size: 1.2em;
-            font-weight: bold;
-            transition: color 0.5s ease;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            color: var(--primary-btn-bg);
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
         }
 
         .hint-text {
             color: var(--text-light);
-            font-size: 0.9em;
-            margin-top: 10px;
+            font-size: 13px;
+            margin-top: 8px;
             font-style: italic;
-            transition: color 0.5s ease;
+            text-align: center;
+            line-height: 1.4;
         }
 
-        @media (max-width: 768px) {
-            .board-container {
-                flex-direction: column;
+        /* Dark mode specific overrides */
+        .dark-mode .feedback.correct {
+            background: var(--feedback-correct-bg-dark);
+            color: var(--feedback-correct-text-dark);
+        }
+
+        .dark-mode .feedback.incorrect {
+            background: var(--feedback-incorrect-bg-dark);
+            color: var(--feedback-incorrect-text-dark);
+        }
+
+        .dark-mode .solution-text {
+            color: #64ffda;
+        }
+
+        .dark-mode .hint-text {
+            color: var(--text-dark);
+        }
+
+        .dark-mode .stat-box .value {
+            color: #64ffda;
+        }
+
+        .dark-mode .stat-box .label {
+            color: var(--text-dark);
+        }
+
+        /* Completion screen */
+        #endOfSetStats {
+            padding: 20px;
+        }
+
+        #endOfSetStats .feedback {
+            opacity: 1;
+            flex-direction: column;
+            padding: 24px 20px;
+        }
+
+        #endOfSetStats h3 {
+            font-size: 1.4em;
+            margin-bottom: 16px;
+        }
+
+        #endOfSetStats p {
+            margin: 4px 0;
+            font-size: 14px;
+        }
+
+        /* Touch improvements */
+        input, select, button {
+            -webkit-appearance: none;
+            border-radius: 8px;
+        }
+
+        /* Landscape orientation adjustments */
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+            h1 {
+                font-size: 1.4em;
+                margin-bottom: 10px;
+            }
+            
+            .container {
+                padding: 8px;
             }
             
             #board {
-                width: 100%;
+                max-width: min(50vw, 300px);
+            }
+            
+            .board-container {
+                flex-direction: row;
+                align-items: flex-start;
             }
             
             .info-panel {
-                width: 100%;
+                flex: 1;
+                margin-left: 15px;
+            }
+        }
+
+        /* iPhone specific improvements */
+        @supports (-webkit-touch-callout: none) {
+            .btn, .upload-label, select {
+                -webkit-appearance: none;
+                -webkit-touch-callout: none;
+            }
+        }
+
+        /* Reduce animations on low-power mode */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .btn-secondary {
+                border-width: 2px;
+            }
+            
+            .upload-section, .puzzle-info, .solution-display {
+                border-width: 2px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>♔ Chess Puzzle Trainer ♚</h1>
+        <h1>♔ Chess Puzzles ♚</h1>
         
         <div class="upload-section" id="uploadSection">
-            <h2 style="color: #4a5568; margin-bottom: 15px;">Upload PGN File</h2>
-            <p style="color: #718096; margin-bottom: 20px;">Select a PGN file containing chess puzzles to begin training</p>
-            <div class="file-input-wrapper">
-                <input type="file" id="pgnFile" accept=".pgn">
-                <label for="pgnFile" class="file-input-label">
-                    📁 Choose PGN File
-                </label>
+            <h2 style="color: #4a5568; margin-bottom: 12px; font-size: 1.1em;">Load Puzzle Set</h2>
+            <div id="fileLoader">
+                <p style="color: #718096; margin-bottom: 8px; font-size: 0.9em;">Select a pre-loaded PGN file:</p>
+                <select id="openPGN">
+                    <option value="">Select a PGN file...</option>
+                    <option value="./PGN/1.pgn">Set 1</option>
+                    <option value="./PGN/2.pgn">Set 2</option>
+                    <option value="./PGN/3.pgn">Set 3</option>
+                    <option value="./PGN/4.pgn">Set 4</option>
+                    <option value="./PGN/5.pgn">Set 5</option>
+                </select>
+                <p style="color: #718096; margin: 12px 0 8px 0; font-size: 0.9em;">Or upload your own:</p>
+                <label class="upload-label" for="pgnFileInput">📁 Choose File</label>
+                <input type="file" id="pgnFileInput" accept=".pgn" style="display: none;">
             </div>
         </div>
 
@@ -437,15 +511,16 @@
                         </div>
                     </div>
 
-                    <div class="controls">
-                        <button class="btn btn-secondary" id="toggleDarkMode">🌙 Dark Mode</button>
-                        <button class="btn btn-primary" id="restartSet">↺ Restart Set</button>
-                        <button class="btn btn-secondary" id="resetPuzzle">↺ Reset</button>
+                    <div class="controls controls-row-3">
+                        <button class="btn btn-secondary" id="toggleDarkMode">🌙</button>
+                        <button class="btn btn-primary" id="restartSet">↺ Restart</button>
+                        <button class="btn btn-secondary" id="resetPuzzle">Reset</button>
                         <button class="btn btn-secondary" id="skipPuzzle">Skip →</button>
                         <button class="btn btn-secondary" id="showHint">💡 Hint</button>
-                        <button class="btn btn-secondary" id="randomizePuzzles">🎲 Randomize</button>
-                        <button class="btn btn-primary" id="downloadMistakes">📥 Download Mistakes</button>
+                        <button class="btn btn-secondary" id="randomizePuzzles">🎲</button>
                     </div>
+
+                    <button class="btn btn-primary btn-full-width" id="downloadMistakes" style="margin-top: 8px;">📥 Download Mistakes</button>
 
                     <div id="feedback" class="feedback"></div>
 
@@ -490,10 +565,59 @@
 
                 this.initializeEventListeners();
                 this.loadState();
+                this.setupMobileOptimizations();
+                
+                window.trainer = this;
+            }
+
+            setupMobileOptimizations() {
+                // Prevent zoom on input focus
+                const viewportMeta = document.querySelector('meta[name="viewport"]');
+                if (viewportMeta) {
+                    viewportMeta.content = 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
+                }
+
+                // Handle orientation changes
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(() => {
+                        if (this.board) {
+                            this.board.resize();
+                        }
+                    }, 100);
+                });
+
+                // Handle iOS safe area
+                this.updateSafeArea();
+
+                // Prevent bounce scrolling
+                document.body.addEventListener('touchmove', (e) => {
+                    if (e.target === document.body) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                // Auto dark mode based on system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    this.isDarkMode = true;
+                    document.body.classList.add('dark-mode');
+                    document.getElementById('toggleDarkMode').textContent = '☀️';
+                }
+            }
+
+            updateSafeArea() {
+                // Handle iPhone safe areas dynamically
+                const root = document.documentElement;
+                if (CSS.supports('padding: env(safe-area-inset-top)')) {
+                    root.style.setProperty('--safe-area-top', 'env(safe-area-inset-top)');
+                    root.style.setProperty('--safe-area-bottom', 'env(safe-area-inset-bottom)');
+                    root.style.setProperty('--safe-area-left', 'env(safe-area-inset-left)');
+                    root.style.setProperty('--safe-area-right', 'env(safe-area-inset-right)');
+                }
             }
 
             initializeEventListeners() {
-                document.getElementById('pgnFile').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('pgnFileInput').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('openPGN').addEventListener('change', (e) => this.loadPGNFile(e));
                 document.getElementById('restartSet').addEventListener('click', () => this.restartSet());
                 document.getElementById('resetPuzzle').addEventListener('click', () => this.resetCurrentPuzzle());
                 document.getElementById('skipPuzzle').addEventListener('click', () => this.nextPuzzle());
@@ -520,10 +644,27 @@
                 reader.readAsText(file);
             }
 
+            async loadPGNFile(event) {
+                const selectedFile = event.target.value;
+                if (!selectedFile) return;
+
+                try {
+                    const response = await fetch(selectedFile);
+                    if (!response.ok) {
+                        throw new Error(`Failed to load file: ${response.statusText}`);
+                    }
+                    const pgnContent = await response.text();
+                    this.parsePGN(pgnContent);
+                } catch (error) {
+                    console.error('Error loading PGN file:', error);
+                    alert(`Error loading PGN file: ${error.message}. Make sure the file exists in the PGN directory.`);
+                    event.target.value = '';
+                }
+            }
+
             parsePGN(pgnContent) {
                 this.puzzles = [];
                 
-                // Split by [Event headers - more robust approach
                 const gameBlocks = [];
                 const lines = pgnContent.split(/\r?\n/);
                 let currentGame = [];
@@ -532,7 +673,6 @@
                     const line = lines[i].trim();
                     
                     if (line.startsWith('[Event ') && currentGame.length > 0) {
-                        // Start of new game, save previous
                         gameBlocks.push(currentGame.join('\n'));
                         currentGame = [];
                     }
@@ -542,7 +682,6 @@
                     }
                 }
                 
-                // Don't forget the last game
                 if (currentGame.length > 0) {
                     gameBlocks.push(currentGame.join('\n'));
                 }
@@ -580,7 +719,6 @@
                 const headers = {};
                 const lines = gameText.split('\n');
                 
-                // Parse headers
                 for (const line of lines) {
                     const headerMatch = line.match(/\[(\w+)\s+"([^"]+)"\]/);
                     if (headerMatch) {
@@ -588,19 +726,17 @@
                     }
                 }
 
-                // Extract move text
                 const moveLines = lines.filter(line => 
                     !line.startsWith('[') && 
                     !line.startsWith('{') && 
                     line.trim() !== ''
                 ).join(' ');
 
-                // Clean the move text
                 let cleanMoves = moveLines
-                    .replace(/\{[^}]*\}/g, '') // Remove comments
-                    .replace(/\([^)]*\)/g, '') // Remove variations
-                    .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
-                    .replace(/\s+/g, ' ') // Normalize spaces
+                    .replace(/\{[^}]*\}/g, '')
+                    .replace(/\([^)]*\)/g, '')
+                    .replace(/1-0|0-1|1\/2-1\/2|\*/g, '')
+                    .replace(/\s+/g, ' ')
                     .trim();
 
                 const moves = this.extractMoves(cleanMoves);
@@ -622,18 +758,13 @@
 
             extractMoves(moveText) {
                 const moves = [];
-                
-                // Split by spaces and filter
                 const tokens = moveText.split(/\s+/).filter(token => token.trim());
                 
                 for (const token of tokens) {
-                    // Skip move numbers (1., 2., 1..., etc.)
                     if (/^\d+\.{1,3}$/.test(token)) continue;
                     
-                    // Clean annotations from moves
                     const cleanToken = token.replace(/[+#!?]+$/, '');
                     
-                    // Validate move format
                     if (this.isValidChessMove(cleanToken)) {
                         moves.push(cleanToken);
                     }
@@ -645,14 +776,13 @@
             isValidChessMove(move) {
                 if (!move || move.length < 2) return false;
                 
-                // Chess move patterns
                 const patterns = [
-                    /^[a-h][1-8]$/, // Pawn moves: e4, d5
-                    /^[a-h]x[a-h][1-8]$/, // Pawn captures: exd5
-                    /^[NBRQK][a-h]?[1-8]?x?[a-h][1-8]$/, // Piece moves: Nf3, Bxe5, Qh4
-                    /^O-O(-O)?$/, // Castling
-                    /^[a-h][1-8]=[NBRQ]$/, // Pawn promotion: e8=Q
-                    /^[a-h]x[a-h][1-8]=[NBRQ]$/ // Capture promotion: exd8=Q
+                    /^[a-h][1-8]$/,
+                    /^[a-h]x[a-h][1-8]$/,
+                    /^[NBRQK][a-h]?[1-8]?x?[a-h][1-8]$/,
+                    /^O-O(-O)?$/,
+                    /^[a-h][1-8]=[NBRQ]$/,
+                    /^[a-h]x[a-h][1-8]=[NBRQ]$/
                 ];
                 
                 return patterns.some(pattern => pattern.test(move));
@@ -661,7 +791,7 @@
             startPuzzles() {
                 document.getElementById('uploadSection').style.display = 'none';
                 document.getElementById('puzzleArea').classList.add('active');
-                document.getElementById('mainPuzzleDisplay').style.display = 'flex';
+                document.getElementById('mainPuzzleDisplay').style.display = 'block';
                 document.getElementById('endOfSetStats').style.display = 'none';
                 
                 this.setStartTime = Date.now();
@@ -685,7 +815,14 @@
                 this.board = Chessboard('board', config);
                 this.game = new Chess();
                 
-                $(window).resize(() => this.board.resize());
+                // Mobile-specific board adjustments
+                $(window).on('resize orientationchange', () => {
+                    setTimeout(() => {
+                        if (this.board) {
+                            this.board.resize();
+                        }
+                    }, 100);
+                });
             }
 
             loadPuzzle(index) {
@@ -698,7 +835,6 @@
                 this.game = new Chess(puzzle.fen);
                 this.board.position(this.game.fen());
                 
-                // Set orientation based on who moves
                 const orientation = this.game.turn() === 'w' ? 'white' : 'black';
                 this.board.orientation(orientation);
                 
@@ -728,7 +864,6 @@
             }
 
             onDrop(source, target) {
-                // Try the move
                 const move = this.game.move({
                     from: source,
                     to: target,
@@ -737,14 +872,12 @@
 
                 if (move === null) return 'snapback';
 
-                // Check if move is correct
                 const expectedMoveStr = this.solutionMoves[this.currentMoveIndex];
                 
                 if (this.isCorrectMove(move, expectedMoveStr)) {
                     this.currentMoveIndex++;
                     
                     if (this.currentMoveIndex >= this.solutionMoves.length) {
-                        // Puzzle completed
                         const puzzleTime = Date.now() - this.puzzleStartTime;
                         this.puzzleTimes.push(puzzleTime);
                         this.totalPuzzleTime += puzzleTime;
@@ -754,9 +887,14 @@
                         this.correctCount++;
                         this.updateStats();
                         this.saveState();
+                        
+                        // Haptic feedback for iPhone
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50);
+                        }
+                        
                         setTimeout(() => this.nextPuzzle(), 2000);
                     } else {
-                        // Continue with solution
                         this.showFeedback(true, '✅ Good! Continue...');
                         this.updateSolutionDisplay();
                         
@@ -765,10 +903,15 @@
                         }, 1000);
                     }
                 } else {
-                    // Wrong move
                     this.game.undo();
-                    this.showFeedback(false, '❌ Incorrect! Try again.');
+                    this.showFeedback(false, '❌ Try again!');
                     this.addToMistakes();
+                    
+                    // Error haptic feedback
+                    if (navigator.vibrate) {
+                        navigator.vibrate([100, 50, 100]);
+                    }
+                    
                     setTimeout(() => {
                         this.board.position(this.game.fen());
                         this.clearFeedback();
@@ -795,7 +938,6 @@
             }
 
             isCorrectMove(userMove, solutionStr) {
-                // Remove annotations for comparison
                 const userMoveSan = userMove.san.replace(/[+#!?]+$/, '');
                 const solutionMoveSan = solutionStr.replace(/[+#!?]+$/, '');
                 
@@ -815,7 +957,7 @@
             }
 
             restartSet() {
-                if (confirm('Are you sure you want to restart the entire set? This will reset your progress.')) {
+                if (confirm('Restart the entire set? This will reset your progress.')) {
                     this.currentPuzzleIndex = 0;
                     this.correctCount = 0;
                     this.mistakes = [];
@@ -831,13 +973,13 @@
                 if (this.isRandomized) {
                     this.puzzles = [...this.originalPuzzles];
                     this.isRandomized = false;
-                    this.showFeedback(true, '📋 Restored original order');
-                    document.getElementById('randomizePuzzles').textContent = '🎲 Randomize';
+                    this.showFeedback(true, '📋 Original order restored');
+                    document.getElementById('randomizePuzzles').textContent = '🎲';
                 } else {
                     this.shuffleArray(this.puzzles);
                     this.isRandomized = true;
                     this.showFeedback(true, '🎲 Puzzles randomized!');
-                    document.getElementById('randomizePuzzles').textContent = '📋 Original Order';
+                    document.getElementById('randomizePuzzles').textContent = '📋';
                 }
                 
                 this.currentPuzzleIndex = 0;
@@ -871,11 +1013,11 @@
                         const targetSquare = move.to;
                         
                         document.getElementById('hintText').textContent = 
-                            `Hint: Move the ${pieceName} to ${targetSquare} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
+                            `💡 ${pieceName} → ${targetSquare}`;
                     }
                 } catch (e) {
                     document.getElementById('hintText').textContent = 
-                        `Hint: Try ${expectedMove} (${this.currentMoveIndex + 1}/${this.solutionMoves.length})`;
+                        `💡 Try: ${expectedMove}`;
                 }
             }
 
@@ -922,7 +1064,11 @@
                 document.getElementById('currentPuzzle').textContent = displayIndex;
                 document.getElementById('totalPuzzles').textContent = this.puzzles.length;
                 document.getElementById('toMove').textContent = this.game.turn() === 'w' ? 'White' : 'Black';
-                document.getElementById('eventName').textContent = puzzle.headers.Event || `Puzzle ${displayIndex}`;
+                
+                // Truncate long event names for mobile
+                const eventName = puzzle.headers.Event || `Puzzle ${displayIndex}`;
+                const truncatedName = eventName.length > 25 ? eventName.substring(0, 22) + '...' : eventName;
+                document.getElementById('eventName').textContent = truncatedName;
             }
 
             updateStats() {
@@ -965,15 +1111,15 @@
 
                 endOfSetStats.innerHTML = `
                     <div class="feedback correct visible" style="flex-direction: column;">
-                        <h3>🏆 Set Completed! 🏆</h3>
-                        <div style="text-align: left; margin-top: 15px;">
-                            <p><strong>📊 Final Statistics:</strong></p>
-                            <p>• <strong>Number of Errors:</strong> ${this.mistakes.length}</p>
+                        <h3>🏆 Set Complete! 🏆</h3>
+                        <div style="text-align: left; margin-top: 15px; width: 100%;">
+                            <p><strong>📊 Final Stats:</strong></p>
+                            <p>• <strong>Errors:</strong> ${this.mistakes.length}</p>
                             <p>• <strong>Error Rate:</strong> ${errorRate}%</p>
                             <p>• <strong>Total Time:</strong> ${timeToCompletion}</p>
-                            <p>• <strong>Average Time per Puzzle:</strong> ${averageTimePerPuzzle}</p>
+                            <p>• <strong>Avg Time:</strong> ${averageTimePerPuzzle}</p>
                         </div>
-                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="location.reload()">Start Over</button>
+                        <button class="btn btn-primary" style="margin-top: 20px; min-width: 150px;" onclick="location.reload()">🔄 Start Over</button>
                     </div>
                 `;
             }
@@ -989,11 +1135,31 @@
                     pgnContent += puzzle.pgn + '\n\n';
                 });
                 
-                const blob = new Blob([pgnContent], { type: 'text/plain;charset=utf-8' });
+                // For mobile, try to use share API if available
+                if (navigator.share && navigator.canShare && navigator.canShare({files: []})) {
+                    const blob = new Blob([pgnContent], { type: 'text/plain;charset=utf-8' });
+                    const file = new File([blob], 'chess_puzzles_mistakes.pgn', { type: 'text/plain' });
+                    
+                    navigator.share({
+                        files: [file],
+                        title: 'Chess Puzzle Mistakes',
+                    }).catch(err => {
+                        console.log('Error sharing:', err);
+                        this.fallbackDownload(pgnContent);
+                    });
+                } else {
+                    this.fallbackDownload(pgnContent);
+                }
+            }
+
+            fallbackDownload(content) {
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 link.download = 'chess_puzzles_mistakes.pgn';
+                document.body.appendChild(link);
                 link.click();
+                document.body.removeChild(link);
             }
 
             toggleDarkMode() {
@@ -1003,10 +1169,17 @@
                 
                 if (this.isDarkMode) {
                     body.classList.add('dark-mode');
-                    button.textContent = '☀️ Light Mode';
+                    button.textContent = '☀️';
                 } else {
                     body.classList.remove('dark-mode');
-                    button.textContent = '🌙 Dark Mode';
+                    button.textContent = '🌙';
+                }
+                
+                // Save preference
+                try {
+                    localStorage.setItem('darkMode', this.isDarkMode.toString());
+                } catch (e) {
+                    console.log('Could not save dark mode preference');
                 }
             }
 
@@ -1023,6 +1196,18 @@
             }
 
             loadState() {
+                // Load dark mode preference
+                try {
+                    const savedDarkMode = localStorage.getItem('darkMode');
+                    if (savedDarkMode === 'true') {
+                        this.isDarkMode = true;
+                        document.body.classList.add('dark-mode');
+                        document.getElementById('toggleDarkMode').textContent = '☀️';
+                    }
+                } catch (e) {
+                    console.log('Could not load dark mode preference');
+                }
+
                 if (this.savedState) {
                     try {
                         const state = this.savedState;
@@ -1043,6 +1228,23 @@
         document.addEventListener('DOMContentLoaded', () => {
             new ChessPuzzleTrainer();
         });
+
+        // Handle iOS viewport changes
+        window.addEventListener('resize', () => {
+            // Fix for iOS viewport height changes
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        });
+
+        // Prevent double tap zoom
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
